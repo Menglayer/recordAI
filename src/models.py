@@ -62,12 +62,18 @@ def get_engine(db_url='local_ledger.db'):
         if db_url.startswith("postgresql://"):
             db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
         
-        # 增加连接池配置，适合云端环境
+        # 自动添加 SSL 模式（Supabase 必须）
+        if "sslmode" not in db_url:
+            separator = "&" if "?" in db_url else "?"
+            db_url += f"{separator}sslmode=require"
+        
+        # 增加连接池配置
         return create_engine(
             db_url, 
             echo=False,
-            pool_pre_ping=True,  # 每次连接前检查存活
-            connect_args={"connect_timeout": 10} # 10秒超时
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            connect_args={"connect_timeout": 15}
         )
     return create_engine(f'sqlite:///{db_url}', echo=False)
 
