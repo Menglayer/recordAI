@@ -468,6 +468,38 @@ def check_password():
     else:
         return st.session_state["password_correct"]
 
+# ============ Global Cache Helpers ============
+
+@st.cache_data(ttl=600)
+def get_sidebar_stats(engine_trigger): # Trigger is just to ensure it's tied to engine state if needed
+    session = get_session(engine)
+    try:
+        snapshot_count = session.query(Snapshot).count()
+        transfer_count = session.query(Transfer).count()
+        price_count = session.query(PriceHistory).count()
+        return snapshot_count, transfer_count, price_count
+    finally:
+        session.close()
+
+@st.cache_data(ttl=600)
+def get_benchmark_roi(engine_trigger):
+    """Quick Benchmark (BTC ROI since first snapshot)"""
+    try:
+        session = get_session(engine)
+        first_snapshot = session.query(Snapshot.date).order_by(Snapshot.date.asc()).first()
+        if first_snapshot:
+            # Get latest BTC and BTC at first snapshot date
+            btc_current = session.query(PriceHistory.price_usd).filter(PriceHistory.symbol=='BTC').order_by(PriceHistory.date.desc()).first()
+            btc_start = session.query(PriceHistory.price_usd).filter(PriceHistory.symbol=='BTC', PriceHistory.date <= first_snapshot[0]).order_by(PriceHistory.date.desc()).first()
+            if btc_current and btc_start and btc_start[0] > 0:
+                roi = ((btc_current[0] / btc_start[0]) - 1) * 100
+                session.close()
+                return roi
+        session.close()
+    except:
+        pass
+    return 0.0
+
 # ============ Main Application ============
 
 def main():
@@ -478,22 +510,11 @@ def main():
     if not check_password():
         st.stop()  # Do not run the rest of the app
     
-@st.cache_data(ttl=600)
-def get_sidebar_stats():
-    session = get_session(engine)
-    try:
-        snapshot_count = session.query(Snapshot).count()
-        transfer_count = session.query(Transfer).count()
-        price_count = session.query(PriceHistory).count()
-        return snapshot_count, transfer_count, price_count
-    finally:
-        session.close()
-
-# --- Sidebar Configuration & Tools ---
+    # --- Sidebar Configuration & Tools ---
     with st.sidebar:
         st.markdown(f'<div style="padding: 10px 16px 20px 16px;"><h2 style="font-size:1.1rem; margin:0;">Account</h2></div>', unsafe_allow_html=True)
         
-        # Privacy Toggle
+        # Privacy & Currency
         col_s1, col_s2 = st.columns(2)
         with col_s1:
             privacy_on = st.toggle("🔒 隐私", value=st.session_state.get('privacy_mode', False))
@@ -516,12 +537,12 @@ def get_sidebar_stats():
         st.markdown('<div class="side-stats">', unsafe_allow_html=True)
         st.markdown(f'<div style="font-size:0.65rem; font-weight:700; color:#9CA3AF; text-transform:uppercase; margin-bottom:12px;">{L.SIDEBAR_STATS}</div>', unsafe_allow_html=True)
         
-        counts = get_sidebar_stats()
+        counts = get_sidebar_stats(str(engine.url))
         for lab, val in [(L.STAT_SNAPSHOTS, counts[0]), (L.STAT_TRANSFERS, counts[1]), (L.STAT_PRICES, counts[2])]:
             st.markdown(f'<div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span style="color:#6B7280; font-size:0.75rem;">{lab}</span><span style="font-weight:700; font-size:0.75rem;">{val}</span></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
     
-    # Dashboard logic with Benchmarking
+    # Page Routing
     if page == L.NAV_DASHBOARD:
         show_dashboard(privacy_on, fx_rate, cur_sym)
     elif page == L.NAV_DATA_ENTRY:
@@ -532,27 +553,6 @@ def get_sidebar_stats():
         show_data_view_page()
 
 
-# ============ Dashboard Calculations (Cached) ============
-
-@st.cache_data(ttl=600)
-def get_benchmark_roi():
-    """Quick Benchmark (BTC ROI since first snapshot)"""
-    try:
-        session = get_session(engine)
-        first_snapshot = session.query(Snapshot.date).order_by(Snapshot.date.asc()).first()
-        if first_snapshot:
-            # Get latest BTC and BTC at first snapshot date
-            btc_current = session.query(PriceHistory.price_usd).filter(PriceHistory.symbol=='BTC').order_by(PriceHistory.date.desc()).first()
-            btc_start = session.query(PriceHistory.price_usd).filter(PriceHistory.symbol=='BTC', PriceHistory.date <= first_snapshot[0]).order_by(PriceHistory.date.desc()).first()
-            if btc_current and btc_start and btc_start[0] > 0:
-                roi = ((btc_current[0] / btc_start[0]) - 1) * 100
-                session.close()
-                return roi
-        session.close()
-    except:
-        pass
-    return 0.0
-
 def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     """Dashboard page with Benchmarking"""
     st.markdown("---")
@@ -561,7 +561,7 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     transfers_data = calculate_transfers_summary()
     pnl_data = calculate_pnl()
     time_returns = calculate_time_based_returns()
-    benchmark_roi = get_benchmark_roi()
+    benchmark_roi = get_benchmark_roi(str(engine.url))
 
     # Data date - Enhanced Typography
     st.markdown(f"""
