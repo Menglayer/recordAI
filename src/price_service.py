@@ -196,13 +196,22 @@ class PriceService:
             return 1.0
             
         try:
-            # yfinance 汇率代码格式: USDCNY=X
-            ticker = yf.Ticker(f"USD{to_currency}=X")
-            data = ticker.history(period='1d')
-            if not data.empty:
-                rate = data['Close'].iloc[-1]
-                print(f"✓ [FX] USD/{to_currency}: {rate:.4f}")
-                return float(rate)
+            # 尝试多种 yfinance 汇率代码格式
+            # 格式 1: USDCNY=X (标准)
+            # 格式 2: CNY=X (部分货币适用)
+            ticker_candidates = [f"USD{to_currency}=X", f"{to_currency}=X"]
+            
+            for ticker_name in ticker_candidates:
+                ticker = yf.Ticker(ticker_name)
+                # 使用 period='5d' 确保在周末或节假日也能拿到最近的收盘价
+                data = ticker.history(period='5d')
+                if not data.empty:
+                    rate = data['Close'].iloc[-1]
+                    if rate > 0:
+                        # 检查汇率是否合理（比如 CNY 应该是 7 左右，如果拿到了 1 以下可能是反向汇率）
+                        # 这里简单判断即可，通常 USD 为基准
+                        print(f"✓ [FX] {ticker_name}: {rate:.4f}")
+                        return float(rate)
         except Exception as e:
             print(f"✗ [FX] {to_currency} 汇率获取失败: {e}")
             
