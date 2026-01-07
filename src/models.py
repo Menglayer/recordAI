@@ -72,8 +72,13 @@ def get_engine(db_url='local_ledger.db'):
             db_url, 
             echo=False,
             pool_pre_ping=True,
-            pool_recycle=3600,
-            connect_args={"connect_timeout": 15}
+            pool_recycle=300,  # 缩短回收时间，防止被云端强制断开
+            pool_size=5,
+            max_overflow=10,
+            connect_args={
+                "connect_timeout": 30,
+                "sslmode": "require"
+            }
         )
     return create_engine(f'sqlite:///{db_url}', echo=False)
 

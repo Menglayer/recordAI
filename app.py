@@ -386,12 +386,51 @@ def get_net_worth_history():
         session.close()
 
 
+# ============ Authentication ============
+
+def check_password():
+    """Returns True if the user had the correct password."""
+
+    def password_entered():
+        """Checks whether a password entered by the user is correct."""
+        if st.session_state["password"] == st.secrets.get("PASSWORD", "admin123"):
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # don't store password
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # First run, show input for password.
+        st.markdown(f"""
+            <div style='display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh;'>
+                <div class="u-card" style='width: 400px; text-align: center;'>
+                    <h2 style='margin-bottom: 24px;'>🦅 Falcon Security</h2>
+                    <p style='color: var(--falcon-muted); margin-bottom: 32px;'>请输入访问密码以继续</p>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Place the input inside a container to control width in the middle
+        _, col_mid, _ = st.columns([1, 2, 1])
+        with col_mid:
+            st.text_input(
+                "Password", type="password", on_change=password_entered, key="password"
+            )
+            if "password_correct" in st.session_state and not st.session_state["password_correct"]:
+                st.error("😕 密码错误，请重试")
+        return False
+    else:
+        return st.session_state["password_correct"]
+
 # ============ Main App ============
 
 def main():
     """Main application"""
     # Apply modern design
     S.apply_custom_design()
+    
+    if not check_password():
+        st.stop()  # Do not run the rest of the app
     
     # Custom Header
     col_t1, col_t2 = st.columns([3, 1])
