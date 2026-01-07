@@ -181,6 +181,33 @@ class PriceService:
         print(f"✗ {symbol} 所有数据源均失败")
         return None
     
+    def fetch_fx_rate(self, to_currency: str) -> float:
+        """
+        获取从 USD 到指定货币的汇率
+        
+        Args:
+            to_currency: 目标货币代码 (如 CNY, EUR)
+            
+        Returns:
+            汇率，失败返回 1.0 (保持 USD)
+        """
+        to_currency = to_currency.upper()
+        if to_currency == 'USD':
+            return 1.0
+            
+        try:
+            # yfinance 汇率代码格式: USDCNY=X
+            ticker = yf.Ticker(f"USD{to_currency}=X")
+            data = ticker.history(period='1d')
+            if not data.empty:
+                rate = data['Close'].iloc[-1]
+                print(f"✓ [FX] USD/{to_currency}: {rate:.4f}")
+                return float(rate)
+        except Exception as e:
+            print(f"✗ [FX] {to_currency} 汇率获取失败: {e}")
+            
+        return 1.0
+
     def fetch_prices(self, symbols_list: List[str]) -> Dict[str, Optional[float]]:
         """
         批量获取多个资产的价格

@@ -34,6 +34,24 @@ def init_connection():
 
 engine = init_connection()
 
+# ============ Currency Helper ============
+@st.cache_data(ttl=3600)  # Cache FX rates for 1 hour
+def get_fx_rate(to_currency):
+    if to_currency == "USD":
+        return 1.0, "$"
+    
+    symbols = {"CNY": "¥", "EUR": "€", "JPY": "¥", "GBP": "£", "HKD": "HK$", "AUD": "A$"}
+    symbol = symbols.get(to_currency, to_currency + " ")
+    
+    service = price_service.PriceService()
+    rate = service.fetch_fx_rate(to_currency)
+    return rate, symbol
+
+def format_val(val, rate, symbol, privacy_on=False):
+    if privacy_on:
+        return "••••••"
+    return f"{symbol}{val * rate:,.2f}"
+
 # ============ Database Functions ============
 
 def save_snapshots_batch(snapshot_date, account_name, snapshot_data):
@@ -149,6 +167,7 @@ def get_latest_snapshot_date():
         session.close()
 
 
+@st.cache_data(ttl=600)
 def get_price_for_date(symbol, target_date):
     """Get price for date, use latest if not available"""
     session = get_session(engine)
@@ -176,6 +195,7 @@ def get_price_for_date(symbol, target_date):
         session.close()
 
 
+@st.cache_data(ttl=600)
 def calculate_net_worth_for_date(target_date):
     """Calculate net worth for date"""
     session = get_session(engine)
@@ -203,6 +223,7 @@ def calculate_net_worth_for_date(target_date):
         session.close()
 
 
+@st.cache_data(ttl=600)
 def calculate_current_net_worth():
     """Calculate current net worth"""
     latest_date = get_latest_snapshot_date()
@@ -372,6 +393,7 @@ def calculate_time_based_returns():
         session.close()
 
 
+@st.cache_data(ttl=600)
 def get_net_worth_history():
     """Get net worth history"""
     session = get_session(engine)
@@ -456,13 +478,30 @@ def main():
     if not check_password():
         st.stop()  # Do not run the rest of the app
     
-    # --- Sidebar Configuration & Tools ---
+@st.cache_data(ttl=600)
+def get_sidebar_stats():
+    session = get_session(engine)
+    try:
+        snapshot_count = session.query(Snapshot).count()
+        transfer_count = session.query(Transfer).count()
+        price_count = session.query(PriceHistory).count()
+        return snapshot_count, transfer_count, price_count
+    finally:
+        session.close()
+
+# --- Sidebar Configuration & Tools ---
     with st.sidebar:
         st.markdown(f'<div style="padding: 10px 16px 20px 16px;"><h2 style="font-size:1.1rem; margin:0;">Account</h2></div>', unsafe_allow_html=True)
         
         # Privacy Toggle
-        privacy_on = st.toggle("🔒 隐私模式", value=st.session_state.get('privacy_mode', False))
-        st.session_state['privacy_mode'] = privacy_on
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            privacy_on = st.toggle("🔒 隐私", value=st.session_state.get('privacy_mode', False))
+            st.session_state['privacy_mode'] = privacy_on
+        with col_s2:
+            currency = st.selectbox("Currency", ["USD", "CNY", "EUR", "JPY", "HKD", "GBP"], index=0, label_visibility="collapsed")
+        
+        fx_rate, cur_sym = get_fx_rate(currency)
         
         # Side Navigation
         page = st.radio(
@@ -476,21 +515,15 @@ def main():
         # Bottom Stats Card
         st.markdown('<div class="side-stats">', unsafe_allow_html=True)
         st.markdown(f'<div style="font-size:0.65rem; font-weight:700; color:#9CA3AF; text-transform:uppercase; margin-bottom:12px;">{L.SIDEBAR_STATS}</div>', unsafe_allow_html=True)
-        session = get_session(engine)
-        try:
-            snapshot_count = session.query(Snapshot).count()
-            transfer_count = session.query(Transfer).count()
-            price_count = session.query(PriceHistory).count()
-            
-            for lab, val in [(L.STAT_SNAPSHOTS, snapshot_count), (L.STAT_TRANSFERS, transfer_count), (L.STAT_PRICES, price_count)]:
-                st.markdown(f'<div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span style="color:#6B7280; font-size:0.75rem;">{lab}</span><span style="font-weight:700; font-size:0.75rem;">{val}</span></div>', unsafe_allow_html=True)
-        finally:
-            session.close()
+        
+        counts = get_sidebar_stats()
+        for lab, val in [(L.STAT_SNAPSHOTS, counts[0]), (L.STAT_TRANSFERS, counts[1]), (L.STAT_PRICES, counts[2])]:
+            st.markdown(f'<div style="display:flex; justify-content:space-between; margin-bottom:6px;"><span style="color:#6B7280; font-size:0.75rem;">{lab}</span><span style="font-weight:700; font-size:0.75rem;">{val}</span></div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
     
     # Dashboard logic with Benchmarking
     if page == L.NAV_DASHBOARD:
-        show_dashboard(privacy_on)
+        show_dashboard(privacy_on, fx_rate, cur_sym)
     elif page == L.NAV_DATA_ENTRY:
         show_data_entry_page()
     elif page == L.NAV_PRICE_UPDATE:
@@ -501,17 +534,9 @@ def main():
 
 # ============ Dashboard Calculations (Cached) ============
 
-def show_dashboard(privacy_on=False):
-    """Dashboard page with Benchmarking"""
-    st.markdown("---")
-    
-    net_worth_data = calculate_current_net_worth()
-    transfers_data = calculate_transfers_summary()
-    pnl_data = calculate_pnl()
-    time_returns = calculate_time_based_returns()
-    
-    # Quick Benchmark (BTC ROI since first snapshot)
-    benchmark_roi = 0.0
+@st.cache_data(ttl=600)
+def get_benchmark_roi():
+    """Quick Benchmark (BTC ROI since first snapshot)"""
     try:
         session = get_session(engine)
         first_snapshot = session.query(Snapshot.date).order_by(Snapshot.date.asc()).first()
@@ -520,10 +545,23 @@ def show_dashboard(privacy_on=False):
             btc_current = session.query(PriceHistory.price_usd).filter(PriceHistory.symbol=='BTC').order_by(PriceHistory.date.desc()).first()
             btc_start = session.query(PriceHistory.price_usd).filter(PriceHistory.symbol=='BTC', PriceHistory.date <= first_snapshot[0]).order_by(PriceHistory.date.desc()).first()
             if btc_current and btc_start and btc_start[0] > 0:
-                benchmark_roi = ((btc_current[0] / btc_start[0]) - 1) * 100
+                roi = ((btc_current[0] / btc_start[0]) - 1) * 100
+                session.close()
+                return roi
         session.close()
     except:
         pass
+    return 0.0
+
+def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
+    """Dashboard page with Benchmarking"""
+    st.markdown("---")
+    
+    net_worth_data = calculate_current_net_worth()
+    transfers_data = calculate_transfers_summary()
+    pnl_data = calculate_pnl()
+    time_returns = calculate_time_based_returns()
+    benchmark_roi = get_benchmark_roi()
 
     # Data date - Enhanced Typography
     st.markdown(f"""
@@ -536,7 +574,7 @@ def show_dashboard(privacy_on=False):
     # Net Worth prominently
     S.metric_card(
         label=L.DASH_NET_WORTH,
-        value=f"${net_worth_data['total_net_worth']:,.2f}",
+        value=format_val(net_worth_data['total_net_worth'], fx_rate, cur_sym),
         is_masked=privacy_on
     )
     
@@ -546,8 +584,8 @@ def show_dashboard(privacy_on=False):
     with col1:
         S.metric_card(
             label=L.DASH_INVESTED,
-            value=f"${transfers_data['net_investment']:,.2f}",
-            delta=f"${transfers_data['total_deposits']:,.0f} 入 | ${transfers_data['total_withdrawals']:,.0f} 出",
+            value=format_val(transfers_data['net_investment'], fx_rate, cur_sym),
+            delta=f"{format_val(transfers_data['total_deposits'], fx_rate, cur_sym)} 入 | {format_val(transfers_data['total_withdrawals'], fx_rate, cur_sym)} 出",
             delta_up="neutral",
             is_masked=privacy_on
         )
@@ -556,7 +594,7 @@ def show_dashboard(privacy_on=False):
         pnl_value = pnl_data['unrealized_pnl']
         S.metric_card(
             label=L.DASH_PNL,
-            value=f"${pnl_value:,.2f}",
+            value=format_val(pnl_value, fx_rate, cur_sym),
             delta=f"{pnl_data['roi_percentage']:.2f}%",
             delta_up=pnl_value >= 0,
             is_masked=privacy_on,
@@ -591,9 +629,9 @@ def show_dashboard(privacy_on=False):
         with col_time2:
             st.info(f"""
             **{L.TIME_NW_CHANGE}**  
-            {L.TIME_START}: ${time_returns['start_net_worth']:,.2f}  
-            {L.TIME_END}: ${time_returns['end_net_worth']:,.2f}  
-            {L.TIME_CHANGE}: ${time_returns['end_net_worth'] - time_returns['start_net_worth']:,.2f}
+            {L.TIME_START}: {format_val(time_returns['start_net_worth'], fx_rate, cur_sym)}  
+            {L.TIME_END}: {format_val(time_returns['end_net_worth'], fx_rate, cur_sym)}  
+            {L.TIME_CHANGE}: {format_val(time_returns['end_net_worth'] - time_returns['start_net_worth'], fx_rate, cur_sym)}
             """)
         
         with col_time3:
