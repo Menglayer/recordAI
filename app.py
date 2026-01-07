@@ -21,13 +21,18 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Database Configuration
-# Priority: Streamlit Secrets -> Environment Variable -> Local SQLite
-db_url = st.secrets.get("DB_URL") or os.getenv("DB_URL") or 'local_ledger.db'
-engine = get_engine(db_url)
+# Database Configuration - Cached for Speed
+@st.cache_resource
+def init_connection():
+    # Priority: Streamlit Secrets -> Environment Variable -> Local SQLite
+    db_url = st.secrets.get("DB_URL") or os.getenv("DB_URL") or 'local_ledger.db'
+    _engine = get_engine(db_url)
+    
+    # Only create tables once per server session
+    Base.metadata.create_all(_engine)
+    return _engine
 
-# Create tables if they don't exist (especially for fresh Supabase instances)
-Base.metadata.create_all(engine)
+engine = init_connection()
 
 # ============ Database Functions ============
 
@@ -133,6 +138,7 @@ def get_unique_accounts():
 
 # ============ Calculation Functions ============
 
+@st.cache_data(ttl=300)
 def get_latest_snapshot_date():
     """Get latest snapshot date"""
     session = get_session(engine)
@@ -241,6 +247,7 @@ def calculate_current_net_worth():
     }
 
 
+@st.cache_data(ttl=300)
 def calculate_transfers_summary():
     """Calculate transfers summary"""
     session = get_session(engine)
@@ -261,6 +268,7 @@ def calculate_transfers_summary():
         session.close()
 
 
+@st.cache_data(ttl=300)
 def calculate_pnl():
     """Calculate PnL"""
     net_worth_data = calculate_current_net_worth()
@@ -284,6 +292,7 @@ def calculate_pnl():
     }
 
 
+@st.cache_data(ttl=300)
 def calculate_time_based_returns():
     """Calculate time-based returns and APY"""
     session = get_session(engine)
@@ -501,13 +510,14 @@ def main():
         show_data_view_page()
 
 
-# ============ Dashboard Page ============
+# ============ Dashboard Calculations (Cached) ============
 
 def show_dashboard():
     """Dashboard page"""
     
     st.markdown("---")
     
+    # These calls are now super fast due to caching
     net_worth_data = calculate_current_net_worth()
     transfers_data = calculate_transfers_summary()
     pnl_data = calculate_pnl()
