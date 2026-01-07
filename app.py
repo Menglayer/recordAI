@@ -409,41 +409,38 @@ def check_password():
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # Professional Login Screen
-        st.markdown(f"""
-            <div style='display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 20px;'>
-                <div class="u-card" style='width: 100%; max-width: 440px; text-align: center; padding: 48px 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.06); border: 1px solid #EEF2F6;'>
+        # Professional Login Screen - Unified
+        _, col_mid, _ = st.columns([1, 1.2, 1])
+        with col_mid:
+            st.markdown("<div style='height: 15vh;'></div>", unsafe_allow_html=True)
+            
+            # Start the Card Wrapper
+            st.markdown(f"""
+                <div class="u-card" style='text-align: center; padding: 40px; margin-bottom: 0px;'>
                     <div style='background: #F8FAFC; width: 64px; height: 64px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px auto;'>
                         <span style='font-size: 32px;'>🔐</span>
                     </div>
                     <h2 style='margin-bottom: 8px; font-size: 1.8rem;'>{L.APP_TITLE.split(" - ")[0]}</h2>
-                    <p style='color: var(--falcon-muted); margin-bottom: 40px; font-size: 0.95rem;'>请验证访问授权</p>
-                    <div id="login-container"></div>
+                    <p style='color: var(--falcon-muted); margin-bottom: 32px; font-size: 0.95rem;'>请验证访问授权</p>
                 </div>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        # Overlay the actual widget on top of the placeholder or positioning
-        # Streamlit doesn't support easy absolute positioning of widgets, so we use columns to center it
-        _, col_mid, _ = st.columns([1, 1.5, 1])
-        with col_mid:
-            # Shift up to visually enter the card
-            st.markdown("<div style='margin-top: -150px;'>", unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
+            
+            # The input follows immediately without gap
             st.text_input(
                 "Access Key", 
                 type="password", 
                 on_change=password_entered, 
                 key="password",
-                placeholder="键入密码并回车"
+                placeholder="键入密码并回车",
+                label_visibility="collapsed"
             )
             
             if "password_correct" in st.session_state and not st.session_state["password_correct"]:
                 st.markdown("""
-                    <div style='background-color: #FEF2F2; color: #DC2626; padding: 12px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; text-align: center; margin-top: 15px; border: 1px solid #FEE2E2;'>
+                    <div style='background-color: #FEF2F2; color: #DC2626; padding: 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; text-align: center; margin-top: 15px; border: 1px solid #FEE2E2;'>
                         ❌ 密码错误，请核对后重试
                     </div>
                 """, unsafe_allow_html=True)
-            st.markdown("</div>", unsafe_allow_html=True)
             
         return False
     else:
