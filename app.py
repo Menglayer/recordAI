@@ -395,29 +395,47 @@ def check_password():
         """Checks whether a password entered by the user is correct."""
         if st.session_state["password"] == st.secrets.get("PASSWORD", "admin123"):
             st.session_state["password_correct"] = True
-            del st.session_state["password"]  # don't store password
+            del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
 
     if "password_correct" not in st.session_state:
-        # First run, show input for password.
+        # Professional Login Screen
         st.markdown(f"""
-            <div style='display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh;'>
-                <div class="u-card" style='width: 400px; text-align: center;'>
-                    <h2 style='margin-bottom: 24px;'>🦅 Falcon Security</h2>
-                    <p style='color: var(--falcon-muted); margin-bottom: 32px;'>请输入访问密码以继续</p>
+            <div style='display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 80vh; padding: 20px;'>
+                <div class="u-card" style='width: 100%; max-width: 440px; text-align: center; padding: 48px 40px; box-shadow: 0 20px 40px rgba(0,0,0,0.06); border: 1px solid #EEF2F6;'>
+                    <div style='background: #F8FAFC; width: 64px; height: 64px; border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px auto;'>
+                        <span style='font-size: 32px;'>🔐</span>
+                    </div>
+                    <h2 style='margin-bottom: 8px; font-size: 1.8rem;'>{L.APP_TITLE.split(" - ")[0]}</h2>
+                    <p style='color: var(--falcon-muted); margin-bottom: 40px; font-size: 0.95rem;'>请验证访问授权</p>
+                    <div id="login-container"></div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
         
-        # Place the input inside a container to control width in the middle
-        _, col_mid, _ = st.columns([1, 2, 1])
+        # Overlay the actual widget on top of the placeholder or positioning
+        # Streamlit doesn't support easy absolute positioning of widgets, so we use columns to center it
+        _, col_mid, _ = st.columns([1, 1.5, 1])
         with col_mid:
+            # Shift up to visually enter the card
+            st.markdown("<div style='margin-top: -150px;'>", unsafe_allow_html=True)
             st.text_input(
-                "Password", type="password", on_change=password_entered, key="password"
+                "Access Key", 
+                type="password", 
+                on_change=password_entered, 
+                key="password",
+                placeholder="键入密码并回车"
             )
+            
             if "password_correct" in st.session_state and not st.session_state["password_correct"]:
-                st.error("😕 密码错误，请重试")
+                st.markdown("""
+                    <div style='background-color: #FEF2F2; color: #DC2626; padding: 12px; border-radius: 10px; font-size: 0.85rem; font-weight: 600; text-align: center; margin-top: 15px; border: 1px solid #FEE2E2;'>
+                        ❌ 密码错误，请核对后重试
+                    </div>
+                """, unsafe_allow_html=True)
+            st.markdown("</div>", unsafe_allow_html=True)
+            
         return False
     else:
         return st.session_state["password_correct"]
