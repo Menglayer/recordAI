@@ -58,7 +58,17 @@ class PriceHistory(Base):
 def get_engine(db_url='local_ledger.db'):
     """创建数据库引擎，支持 SQLite 和 PostgreSQL"""
     if "://" in db_url:
-        return create_engine(db_url, echo=False)
+        # 确保使用 psycopg2 驱动
+        if db_url.startswith("postgresql://"):
+            db_url = db_url.replace("postgresql://", "postgresql+psycopg2://", 1)
+        
+        # 增加连接池配置，适合云端环境
+        return create_engine(
+            db_url, 
+            echo=False,
+            pool_pre_ping=True,  # 每次连接前检查存活
+            connect_args={"connect_timeout": 10} # 10秒超时
+        )
     return create_engine(f'sqlite:///{db_url}', echo=False)
 
 
