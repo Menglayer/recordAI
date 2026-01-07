@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 MyLedger Falcon-Inspired Design System
-Typography Focus: Refined Chinese fonts and balanced numeric weights.
+Added: Privacy mode support and mobile adaptations.
 """
 
 import streamlit as st
@@ -14,7 +14,7 @@ def apply_custom_design():
         :root {
             --falcon-bg: #F9FAFB;
             --falcon-card: #FFFFFF;
-            --falcon-primary: #10B981; /* Default to USDT Green */
+            --falcon-primary: #10B981;
             --falcon-black: #0F172A;
             --falcon-text: #1E293B;
             --falcon-muted: #64748B;
@@ -22,40 +22,35 @@ def apply_custom_design():
             --falcon-radius: 18px;
         }
 
-        /* 全局字体平滑处理 */
         .stApp {
             background-color: var(--falcon-bg);
-            /* 智能中英双字体栈：优先 HarmonyOS / 苹方 / 极简雅黑 */
             font-family: 'Inter', "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
             color: var(--falcon-text);
             -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
 
-        #MainMenu {visibility: hidden;}
-        footer {visibility: hidden;}
-        header {background-color: transparent !important;}
-
+        /* 响应式容器 */
         .block-container {
             padding-top: 1.5rem !important;
             max-width: 1060px !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
         }
 
-        /* 标题风格：更有呼吸感的字体比例 */
+        /* 标题适配 */
         h1, h2, h3 {
-            font-family: 'Outfit', "HarmonyOS Sans SC", sans-serif;
+            font-family: 'Outfit', sans-serif;
             color: var(--falcon-black) !important;
             letter-spacing: -0.03em !important;
             font-weight: 700 !important;
         }
         
-        /* 侧边栏极致极简 */
-        [data-testid="stSidebar"] {
-            background-color: #FFFFFF;
-            border-right: 1px solid #F1F5F9;
+        @media (max-width: 768px) {
+            h2 { font-size: 1.4rem !important; }
+            .m-value { font-size: 1.8rem !important; }
         }
 
-        /* 侧边导航优化 */
+        /* 侧边栏按钮 */
         [data-testid="stSidebar"] div[role="radiogroup"] label {
             display: flex !important;
             padding: 9px 16px !important;
@@ -65,21 +60,23 @@ def apply_custom_design():
             border: none !important;
         }
 
-        [data-testid="stSidebar"] div[role="radiogroup"] label p {
-            color: #64748B !important;
-            font-weight: 500 !important;
-            font-size: 0.92rem !important;
-            transition: color 0.2s;
-        }
-
-        /* 选中态：模拟 Falcon 的精致浮窗感 */
         [data-testid="stSidebar"] div[role="radiogroup"] label[aria-checked="true"] {
             background: #0F172A !important;
             box-shadow: 0 4px 10px rgba(15, 23, 42, 0.12) !important;
         }
         [data-testid="stSidebar"] div[role="radiogroup"] label[aria-checked="true"] p {
             color: #FFFFFF !important;
-            font-weight: 600 !important;
+        }
+
+        /* 隐私遮罩效果 */
+        .privacy-masked {
+            filter: blur(8px);
+            user-select: none;
+            cursor: pointer;
+            transition: filter 0.3s;
+        }
+        .privacy-masked:hover {
+            filter: blur(4px);
         }
 
         /* 统一卡片 */
@@ -88,29 +85,25 @@ def apply_custom_design():
             padding: 24px;
             border-radius: var(--falcon-radius);
             border: 1px solid #F1F5F9;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
 
-        /* 指标显示优化：提升字间距与排版层次 */
-        .m-box {
-            display: block;
-        }
+        /* 指标卡片 */
         .m-label {
             font-size: 0.78rem;
             font-weight: 600;
             color: var(--falcon-muted);
             text-transform: uppercase;
-            letter-spacing: 0.08em; /* 增加高级感字间距 */
+            letter-spacing: 0.08em;
             margin-bottom: 10px;
         }
         .m-value {
-            font-size: 2.3rem; /* 稍微减小避免笨重 */
-            font-weight: 700; /* 从 800 降到 700 */
+            font-size: 2.3rem;
+            font-weight: 700;
             color: var(--falcon-black);
             font-family: 'Outfit', sans-serif;
             line-height: 1.1;
-            letter-spacing: -0.01em;
         }
         .m-delta {
             display: inline-flex;
@@ -124,21 +117,32 @@ def apply_custom_design():
         }
         .d-up { background-color: #F0FDF4; color: #16A34A; }
         .d-down { background-color: #FEF2F2; color: #DC2626; }
-        .d-n { background-color: #F8FAFB; color: #475569; border: 1px solid #F1F5F9; }
+        .d-n { background-color: #F8FAFB; color: #475569; }
 
-        /* 侧边统计容器 */
-        .side-stats {
-            background: #F9FAFB;
-            border-radius: 14px;
-            padding: 14px;
-            margin: 12px;
-            border: 1px solid #F1F5F9;
+        /* 基准对比标签 */
+        .benchmark-tag {
+            font-size: 0.7rem;
+            color: var(--falcon-muted);
+            margin-left: 8px;
+            font-weight: 500;
+        }
+
+        /* 移动端表格优化 */
+        [data-testid="stDataFrameResizable"] {
+            border-radius: 14px !important;
+            overflow: hidden !important;
         }
     </style>
     """, unsafe_allow_html=True)
 
-def metric_card(label, value, delta=None, delta_up=True, help_text=None):
-    """极致优雅的指标卡片"""
+def metric_card(label, value, delta=None, delta_up=True, is_masked=False, benchmark=None):
+    """极致优雅的指标卡片，支持隐私模式和基准对比"""
+    val_display = value
+    if is_masked:
+        # 如果是隐私模式且不是百分比，则进行遮罩覆盖
+        if "%" not in str(value):
+            val_display = '<span class="privacy-masked">$ ••••••</span>'
+    
     d_html = ""
     if delta:
         if isinstance(delta_up, bool):
@@ -147,12 +151,17 @@ def metric_card(label, value, delta=None, delta_up=True, help_text=None):
         else:
             clz = "d-n"
             icon = "→"
-        d_html = f'<div class="m-delta {clz}"><span>{icon}</span> <span>{delta}</span></div>'
+        
+        bench_html = ""
+        if benchmark:
+            bench_html = f'<span class="benchmark-tag">vs {benchmark}</span>'
+            
+        d_html = f'<div class="m-delta {clz}"><span>{icon}</span> <span>{delta}</span>{bench_html}</div>'
         
     st.markdown(f"""
     <div class="u-card">
         <div class="m-label">{label}</div>
-        <div class="m-value">{value}</div>
+        <div class="m-value">{val_display}</div>
         {d_html}
     </div>
     """, unsafe_allow_html=True)

@@ -446,7 +446,7 @@ def check_password():
     else:
         return st.session_state["password_correct"]
 
-# ============ Main App ============
+# ============ Main Application ============
 
 def main():
     """Main application"""
@@ -456,31 +456,22 @@ def main():
     if not check_password():
         st.stop()  # Do not run the rest of the app
     
-    # Custom Header
-    col_t1, col_t2 = st.columns([3, 1])
-    with col_t1:
-        st.title(L.APP_TITLE)
-        st.caption(L.APP_SUBTITLE)
-    with col_t2:
-        # Mini date tag
-        st.markdown(f"""
-            <div style="text-align:right; padding-top:20px;">
-                <span style="background:#EEF2FF; color:#4F46E5; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600;">
-                    📅 {date.today().strftime('%Y-%m-%d')}
-                </span>
-            </div>
-        """, unsafe_allow_html=True)
-    
+    # --- Sidebar Configuration & Tools ---
     with st.sidebar:
-        st.markdown(f'<div style="padding: 0 16px 20px 16px;"><h2 style="font-size:1.2rem; margin:0;">Account</h2></div>', unsafe_allow_html=True)
-        # Side Navigation - Only 4 items
+        st.markdown(f'<div style="padding: 10px 16px 20px 16px;"><h2 style="font-size:1.1rem; margin:0;">Account</h2></div>', unsafe_allow_html=True)
+        
+        # Privacy Toggle
+        privacy_on = st.toggle("🔒 隐私模式", value=st.session_state.get('privacy_mode', False))
+        st.session_state['privacy_mode'] = privacy_on
+        
+        # Side Navigation
         page = st.radio(
             "Menu", # This will be hidden by CSS
             [L.NAV_DASHBOARD, L.NAV_DATA_ENTRY, L.NAV_PRICE_UPDATE, L.NAV_DATA_VIEW],
             index=0
         )
         
-        st.markdown("<div style='flex-grow:1'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='flex-grow:1; height: 100px;'></div>", unsafe_allow_html=True)
         
         # Bottom Stats Card
         st.markdown('<div class="side-stats">', unsafe_allow_html=True)
@@ -497,8 +488,9 @@ def main():
             session.close()
         st.markdown('</div>', unsafe_allow_html=True)
     
+    # Dashboard logic with Benchmarking
     if page == L.NAV_DASHBOARD:
-        show_dashboard()
+        show_dashboard(privacy_on)
     elif page == L.NAV_DATA_ENTRY:
         show_data_entry_page()
     elif page == L.NAV_PRICE_UPDATE:
@@ -509,24 +501,33 @@ def main():
 
 # ============ Dashboard Calculations (Cached) ============
 
-def show_dashboard():
-    """Dashboard page"""
-    
+def show_dashboard(privacy_on=False):
+    """Dashboard page with Benchmarking"""
     st.markdown("---")
     
-    # These calls are now super fast due to caching
     net_worth_data = calculate_current_net_worth()
     transfers_data = calculate_transfers_summary()
     pnl_data = calculate_pnl()
     time_returns = calculate_time_based_returns()
     
-    if net_worth_data['latest_date'] is None:
-        st.info(L.DASH_NO_DATA)
-        return
-    
+    # Quick Benchmark (BTC ROI since first snapshot)
+    benchmark_roi = 0.0
+    try:
+        session = get_session(engine)
+        first_snapshot = session.query(Snapshot.date).order_by(Snapshot.date.asc()).first()
+        if first_snapshot:
+            # Get latest BTC and BTC at first snapshot date
+            btc_current = session.query(PriceHistory.price_usd).filter(PriceHistory.symbol=='BTC').order_by(PriceHistory.date.desc()).first()
+            btc_start = session.query(PriceHistory.price_usd).filter(PriceHistory.symbol=='BTC', PriceHistory.date <= first_snapshot[0]).order_by(PriceHistory.date.desc()).first()
+            if btc_current and btc_start and btc_start[0] > 0:
+                benchmark_roi = ((btc_current[0] / btc_start[0]) - 1) * 100
+        session.close()
+    except:
+        pass
+
     # Data date - Enhanced Typography
     st.markdown(f"""
-        <div style='margin: 1rem 0 2rem 0; display: flex; align-items: baseline; gap: 15px;'>
+        <div style='margin: 0 0 2rem 0; display: flex; align-items: baseline; gap: 15px;'>
             <h2 style='margin: 0; font-size: 1.7rem;'>{L.DASH_DATA_DATE} <span style='font-family: Outfit; font-weight: 700;'>{net_worth_data['latest_date']}</span></h2>
             <span style='color: var(--falcon-muted); font-size: 0.85rem; font-weight: 500;'>{L.DASH_BASED_ON}</span>
         </div>
@@ -536,7 +537,7 @@ def show_dashboard():
     S.metric_card(
         label=L.DASH_NET_WORTH,
         value=f"${net_worth_data['total_net_worth']:,.2f}",
-        help_text=L.DASH_NW_HELP
+        is_masked=privacy_on
     )
     
     # Other metrics in one row
@@ -547,7 +548,8 @@ def show_dashboard():
             label=L.DASH_INVESTED,
             value=f"${transfers_data['net_investment']:,.2f}",
             delta=f"${transfers_data['total_deposits']:,.0f} 入 | ${transfers_data['total_withdrawals']:,.0f} 出",
-            delta_up="neutral"
+            delta_up="neutral",
+            is_masked=privacy_on
         )
     
     with col2:
@@ -557,7 +559,8 @@ def show_dashboard():
             value=f"${pnl_value:,.2f}",
             delta=f"{pnl_data['roi_percentage']:.2f}%",
             delta_up=pnl_value >= 0,
-            help_text=L.DASH_PNL_HELP
+            is_masked=privacy_on,
+            benchmark=f"BTC {benchmark_roi:+.1f}%" if benchmark_roi != 0 else None
         )
     
     with col3:
