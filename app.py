@@ -995,7 +995,7 @@ def show_price_page():
     with tab1:
         st.subheader(L.PRICE_AUTO)
         
-        session_db = get_session(get_engine())
+        session_db = get_session(engine)
         try:
             snapshots = session_db.query(Snapshot.symbol).distinct().order_by(Snapshot.symbol).all()
             symbols_from_snapshots = [s[0] for s in snapshots]
@@ -1035,7 +1035,7 @@ def show_price_page():
                             st.success(L.PRICE_UPDATED_N.format(count))
                             st.balloons()
                             
-                            session_db = get_session(get_engine())
+                            session_db = get_session(engine)
                             try:
                                 prices = session_db.query(PriceHistory).filter(
                                     PriceHistory.date == date.today()
@@ -1090,7 +1090,7 @@ def show_price_page():
                 elif price_usd <= 0:
                     st.error(L.PRICE_GT0)
                 else:
-                    session = get_session(get_engine())
+                    session = get_session(engine)
                     try:
                         existing = session.query(PriceHistory).filter(
                             and_(
@@ -1113,6 +1113,7 @@ def show_price_page():
                             session.add(new_price)
                         
                         session.commit()
+                        clear_data_cache()  # Invalidate cache after manual price entry
                         st.success(L.PRICE_SAVED.format(symbol, price_usd))
                         
                     except Exception as e:
