@@ -624,49 +624,74 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         st.markdown("---")
         st.subheader(L.TIME_RETURNS)
         
+        # Privacy helper
+        def mask(val):
+            return "••••••" if privacy_on else val
+        
         col_time1, col_time2, col_time3 = st.columns(3)
         
         with col_time1:
-            st.info(f"""
-            **{L.TIME_PERIOD}**  
-            {L.TIME_START}: {time_returns['start_date']}  
-            {L.TIME_END}: {time_returns['end_date']}  
-            {L.TIME_DAYS}: {time_returns['days']:.1f}  
-            {L.TIME_HOURS}: {time_returns['hours']:.1f}
-            """)
+            st.markdown(f"""
+            <div class="u-card" style="padding: 20px;">
+                <div class="m-label">{L.TIME_PERIOD}</div>
+                <div style="margin-top: 12px; font-size: 0.9rem; line-height: 1.8;">
+                    <div><span style="color: var(--falcon-muted);">{L.TIME_START}:</span> <strong>{time_returns['start_date']}</strong></div>
+                    <div><span style="color: var(--falcon-muted);">{L.TIME_END}:</span> <strong>{time_returns['end_date']}</strong></div>
+                    <div><span style="color: var(--falcon-muted);">{L.TIME_DAYS}:</span> <strong>{time_returns['days']:.1f}</strong></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col_time2:
-            st.info(f"""
-            **{L.TIME_NW_CHANGE}**  
-            {L.TIME_START}: {format_val(time_returns['start_net_worth'], fx_rate, cur_sym)}  
-            {L.TIME_END}: {format_val(time_returns['end_net_worth'], fx_rate, cur_sym)}  
-            {L.TIME_CHANGE}: {format_val(time_returns['end_net_worth'] - time_returns['start_net_worth'], fx_rate, cur_sym)}
-            """)
+            start_val = mask(format_val(time_returns['start_net_worth'], fx_rate, cur_sym))
+            end_val = mask(format_val(time_returns['end_net_worth'], fx_rate, cur_sym))
+            change_val = mask(format_val(time_returns['end_net_worth'] - time_returns['start_net_worth'], fx_rate, cur_sym))
+            
+            st.markdown(f"""
+            <div class="u-card" style="padding: 20px;">
+                <div class="m-label">{L.TIME_NW_CHANGE}</div>
+                <div style="margin-top: 12px; font-size: 0.9rem; line-height: 1.8;">
+                    <div><span style="color: var(--falcon-muted);">{L.TIME_START}:</span> <strong>{start_val}</strong></div>
+                    <div><span style="color: var(--falcon-muted);">{L.TIME_END}:</span> <strong>{end_val}</strong></div>
+                    <div><span style="color: var(--falcon-muted);">{L.TIME_CHANGE}:</span> <strong>{change_val}</strong></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
         with col_time3:
-            st.info(f"""
-            **{L.TIME_CASH_FLOW}**  
-            {L.TIME_DEPOSITS}: ${time_returns.get('period_deposits', 0):,.2f}  
-            {L.TIME_WITHDRAWALS}: ${time_returns.get('period_withdrawals', 0):,.2f}  
-            {L.TIME_NET}: ${time_returns['net_cash_flow']:,.2f}
-            """)
+            deposits = mask(f"{cur_sym}{time_returns.get('period_deposits', 0) * fx_rate:,.2f}")
+            withdrawals = mask(f"{cur_sym}{time_returns.get('period_withdrawals', 0) * fx_rate:,.2f}")
+            net_flow = mask(f"{cur_sym}{time_returns['net_cash_flow'] * fx_rate:,.2f}")
+            
+            st.markdown(f"""
+            <div class="u-card" style="padding: 20px;">
+                <div class="m-label">{L.TIME_CASH_FLOW}</div>
+                <div style="margin-top: 12px; font-size: 0.9rem; line-height: 1.8;">
+                    <div><span style="color: var(--falcon-muted);">{L.TIME_DEPOSITS}:</span> <strong style="color: #10B981;">{deposits}</strong></div>
+                    <div><span style="color: var(--falcon-muted);">{L.TIME_WITHDRAWALS}:</span> <strong style="color: #EF4444;">{withdrawals}</strong></div>
+                    <div><span style="color: var(--falcon-muted);">{L.TIME_NET}:</span> <strong>{net_flow}</strong></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
         
         col_apy1, col_apy2 = st.columns(2)
         
         with col_apy1:
-            st.metric(
+            roi_val = f"{time_returns['roi']:.2f}%"
+            S.metric_card(
                 label=L.TIME_PERIOD_ROI,
-                value=f"{time_returns['roi']:.2f}%",
-                delta=f"{time_returns['hours']:.1f} {L.TIME_HOURS}",
-                delta_color="normal" if time_returns['roi'] >= 0 else "inverse"
+                value=roi_val,
+                delta=f"{time_returns['days']:.1f} 天",
+                delta_up=time_returns['roi'] >= 0
             )
         
         with col_apy2:
-            st.metric(
+            apy_val = f"{time_returns['apy']:,.2f}%"
+            S.metric_card(
                 label=L.TIME_APY,
-                value=f"{time_returns['apy']:,.2f}%",
+                value=apy_val,
                 delta=L.TIME_ANNUALIZED if abs(time_returns['apy']) < 1000 else L.TIME_HIGH_VOL,
-                delta_color="normal" if time_returns['apy'] >= 0 else "inverse"
+                delta_up=time_returns['apy'] >= 0
             )
     
     st.markdown("---")
@@ -898,53 +923,6 @@ def show_data_entry_page():
                 )
             
             st.info(f"{L.ENTRY_CURRENT_ACCOUNT}: **{account_name or L.ENTRY_NONE}**")
-            
-            # Copy forward button - carry over all accounts from previous date
-            st.markdown("---")
-            st.markdown("##### 🔄 快速继承")
-            if st.button("📋 复制上一天所有账户", use_container_width=True, help="将上一个快照日期的所有账户数据复制到今天"):
-                session = get_session(engine)
-                try:
-                    # Find the latest snapshot date
-                    latest_date = session.query(Snapshot.date).order_by(Snapshot.date.desc()).first()
-                    if latest_date and latest_date[0] != snapshot_date:
-                        # Copy all snapshots from that date to the new date
-                        old_snapshots = session.query(Snapshot).filter(
-                            Snapshot.date == latest_date[0]
-                        ).all()
-                        
-                        copied_count = 0
-                        for old_snap in old_snapshots:
-                            # Check if already exists for new date
-                            existing = session.query(Snapshot).filter(
-                                and_(
-                                    Snapshot.date == snapshot_date,
-                                    Snapshot.account_name == old_snap.account_name,
-                                    Snapshot.symbol == old_snap.symbol
-                                )
-                            ).first()
-                            
-                            if not existing:
-                                new_snap = Snapshot(
-                                    date=snapshot_date,
-                                    account_name=old_snap.account_name,
-                                    symbol=old_snap.symbol,
-                                    quantity=old_snap.quantity
-                                )
-                                session.add(new_snap)
-                                copied_count += 1
-                        
-                        session.commit()
-                        clear_data_cache()
-                        st.success(f"✅ 已从 {latest_date[0]} 复制 {copied_count} 条记录到 {snapshot_date}")
-                        st.balloons()
-                    else:
-                        st.warning("没有可复制的历史数据，或者日期相同")
-                except Exception as e:
-                    session.rollback()
-                    st.error(f"复制失败: {e}")
-                finally:
-                    session.close()
         
         with col2:
             st.markdown(f"### {L.ENTRY_HOLDINGS}")
@@ -1011,8 +989,59 @@ def show_data_entry_page():
                     st.warning(L.ENTRY_NO_VALID)
                 else:
                     try:
+                        # 1. Save current account's snapshot
                         count = save_snapshots_batch(snapshot_date, account_name, valid_rows)
-                        st.success(L.ENTRY_SAVED_N.format(count))
+                        
+                        # 2. Auto carry-forward other accounts from previous date
+                        session = get_session(engine)
+                        try:
+                            # Find accounts that exist on previous dates but not on current date
+                            prev_date = session.query(Snapshot.date).filter(
+                                Snapshot.date < snapshot_date
+                            ).order_by(Snapshot.date.desc()).first()
+                            
+                            carried_count = 0
+                            if prev_date:
+                                # Get all accounts from previous date
+                                prev_snapshots = session.query(Snapshot).filter(
+                                    Snapshot.date == prev_date[0]
+                                ).all()
+                                
+                                for old_snap in prev_snapshots:
+                                    # Skip if it's the account we just saved
+                                    if old_snap.account_name == account_name:
+                                        continue
+                                    
+                                    # Check if already exists for new date
+                                    existing = session.query(Snapshot).filter(
+                                        and_(
+                                            Snapshot.date == snapshot_date,
+                                            Snapshot.account_name == old_snap.account_name,
+                                            Snapshot.symbol == old_snap.symbol
+                                        )
+                                    ).first()
+                                    
+                                    if not existing:
+                                        new_snap = Snapshot(
+                                            date=snapshot_date,
+                                            account_name=old_snap.account_name,
+                                            symbol=old_snap.symbol,
+                                            quantity=old_snap.quantity
+                                        )
+                                        session.add(new_snap)
+                                        carried_count += 1
+                                
+                                if carried_count > 0:
+                                    session.commit()
+                                    clear_data_cache()
+                        finally:
+                            session.close()
+                        
+                        # Show success message
+                        msg = L.ENTRY_SAVED_N.format(count)
+                        if carried_count > 0:
+                            msg += f" (自动继承其他账户 {carried_count} 条)"
+                        st.success(msg)
                         st.balloons()
                         st.session_state.snapshot_data = edited_data
                         
