@@ -52,6 +52,13 @@ def format_val(val, rate, symbol, privacy_on=False):
         return "••••••"
     return f"{symbol}{val * rate:,.2f}"
 
+# ============ Cache Management ============
+
+def clear_data_cache():
+    """Clear all cached calculations after data changes"""
+    # Clear all st.cache_data functions
+    st.cache_data.clear()
+
 # ============ Database Functions ============
 
 def save_snapshots_batch(snapshot_date, account_name, snapshot_data):
@@ -90,6 +97,7 @@ def save_snapshots_batch(snapshot_date, account_name, snapshot_data):
             saved_count += 1
         
         session.commit()
+        clear_data_cache()  # Invalidate cache after saving
         return saved_count
         
     except Exception as e:
@@ -112,6 +120,7 @@ def save_transfer(transfer_date, transfer_type, amount_usd, note=None):
         )
         session.add(new_transfer)
         session.commit()
+        clear_data_cache()  # Invalidate cache after saving
         return True
     except Exception as e:
         session.rollback()
@@ -1022,6 +1031,7 @@ def show_price_page():
                     with st.spinner(L.PRICE_FETCHING.format(len(symbols_to_fetch))):
                         try:
                             count = price_service.update_price_history_db(symbols_to_fetch)
+                            clear_data_cache()  # Invalidate cache after price update
                             st.success(L.PRICE_UPDATED_N.format(count))
                             st.balloons()
                             
