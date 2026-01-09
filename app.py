@@ -855,18 +855,20 @@ def show_data_entry_page():
                         key='account_select'
                     )
                     
-                    # Auto-load previous holdings for this account
-                    if st.button("📥 加载上次持仓", use_container_width=True):
+                    # Auto-load previous holdings when account changes
+                    prev_account = st.session_state.get('_prev_account', None)
+                    if account_name != prev_account:
+                        st.session_state['_prev_account'] = account_name
+                        
+                        # Load holdings for this account
                         session = get_session(engine)
                         try:
-                            # Get latest snapshot for this account
                             latest = session.query(Snapshot).filter(
                                 Snapshot.account_name == account_name
-                            ).order_by(Snapshot.date.desc()).all()
+                            ).order_by(Snapshot.date.desc()).first()
                             
                             if latest:
-                                # Get the most recent date for this account
-                                latest_date = latest[0].date
+                                latest_date = latest.date
                                 latest_holdings = session.query(Snapshot).filter(
                                     and_(
                                         Snapshot.account_name == account_name,
@@ -879,8 +881,7 @@ def show_data_entry_page():
                                         'Symbol': [h.symbol for h in latest_holdings] + [''],
                                         'Quantity': [h.quantity for h in latest_holdings] + [0.0]
                                     })
-                                    st.success(f"✅ 已加载 {account_name} 在 {latest_date} 的 {len(latest_holdings)} 条持仓记录")
-                                    st.rerun()
+                                    st.toast(f"📥 已加载 {account_name} 的 {len(latest_holdings)} 条持仓", icon="✅")
                         finally:
                             session.close()
                 else:
