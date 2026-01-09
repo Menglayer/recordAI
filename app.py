@@ -739,14 +739,21 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     history_df = get_net_worth_history()
     
     if not history_df.empty and len(history_df) > 1:
+        # Check if all values are the same (indicating missing historical prices)
+        unique_values = history_df['net_worth'].nunique()
+        
+        if unique_values == 1:
+            st.warning("📊 所有历史日期的净值相同，可能是因为缺少历史价格数据。建议在每次录入快照时同时更新价格，这样才能看到真实的净值变化曲线。")
+        
         fig_history = go.Figure()
         
         fig_history.add_trace(go.Scatter(
             x=history_df['date'],
             y=history_df['net_worth'],
-            mode='lines',
+            mode='lines+markers',  # Add markers to show actual data points
             name=L.DASH_NET_WORTH,
-            line=dict(color='#000000', width=4, shape='spline'),
+            line=dict(color='#000000', width=3, shape='spline'),
+            marker=dict(size=8, color='#000000'),
             fill='tozeroy',
             fillcolor='rgba(0, 0, 0, 0.03)'
         ))
@@ -844,8 +851,38 @@ def show_data_entry_page():
                     account_name = st.selectbox(
                         L.ENTRY_ACCOUNT,
                         options=existing_accounts,
-                        help=f"{L.ENTRY_SELECT_EXISTING}{L.ENTRY_ACCOUNT}"
+                        help=f"{L.ENTRY_SELECT_EXISTING}{L.ENTRY_ACCOUNT}",
+                        key='account_select'
                     )
+                    
+                    # Auto-load previous holdings for this account
+                    if st.button("📥 加载上次持仓", use_container_width=True):
+                        session = get_session(engine)
+                        try:
+                            # Get latest snapshot for this account
+                            latest = session.query(Snapshot).filter(
+                                Snapshot.account_name == account_name
+                            ).order_by(Snapshot.date.desc()).all()
+                            
+                            if latest:
+                                # Get the most recent date for this account
+                                latest_date = latest[0].date
+                                latest_holdings = session.query(Snapshot).filter(
+                                    and_(
+                                        Snapshot.account_name == account_name,
+                                        Snapshot.date == latest_date
+                                    )
+                                ).all()
+                                
+                                if latest_holdings:
+                                    st.session_state.snapshot_data = pd.DataFrame({
+                                        'Symbol': [h.symbol for h in latest_holdings] + [''],
+                                        'Quantity': [h.quantity for h in latest_holdings] + [0.0]
+                                    })
+                                    st.success(f"✅ 已加载 {account_name} 在 {latest_date} 的 {len(latest_holdings)} 条持仓记录")
+                                    st.rerun()
+                        finally:
+                            session.close()
                 else:
                     account_name = st.text_input(
                         L.ENTRY_ACCOUNT_NAME,
@@ -860,6 +897,53 @@ def show_data_entry_page():
                 )
             
             st.info(f"{L.ENTRY_CURRENT_ACCOUNT}: **{account_name or L.ENTRY_NONE}**")
+            
+            # Copy forward button - carry over all accounts from previous date
+            st.markdown("---")
+            st.markdown("##### 🔄 快速继承")
+            if st.button("📋 复制上一天所有账户", use_container_width=True, help="将上一个快照日期的所有账户数据复制到今天"):
+                session = get_session(engine)
+                try:
+                    # Find the latest snapshot date
+                    latest_date = session.query(Snapshot.date).order_by(Snapshot.date.desc()).first()
+                    if latest_date and latest_date[0] != snapshot_date:
+                        # Copy all snapshots from that date to the new date
+                        old_snapshots = session.query(Snapshot).filter(
+                            Snapshot.date == latest_date[0]
+                        ).all()
+                        
+                        copied_count = 0
+                        for old_snap in old_snapshots:
+                            # Check if already exists for new date
+                            existing = session.query(Snapshot).filter(
+                                and_(
+                                    Snapshot.date == snapshot_date,
+                                    Snapshot.account_name == old_snap.account_name,
+                                    Snapshot.symbol == old_snap.symbol
+                                )
+                            ).first()
+                            
+                            if not existing:
+                                new_snap = Snapshot(
+                                    date=snapshot_date,
+                                    account_name=old_snap.account_name,
+                                    symbol=old_snap.symbol,
+                                    quantity=old_snap.quantity
+                                )
+                                session.add(new_snap)
+                                copied_count += 1
+                        
+                        session.commit()
+                        clear_data_cache()
+                        st.success(f"✅ 已从 {latest_date[0]} 复制 {copied_count} 条记录到 {snapshot_date}")
+                        st.balloons()
+                    else:
+                        st.warning("没有可复制的历史数据，或者日期相同")
+                except Exception as e:
+                    session.rollback()
+                    st.error(f"复制失败: {e}")
+                finally:
+                    session.close()
         
         with col2:
             st.markdown(f"### {L.ENTRY_HOLDINGS}")
