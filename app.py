@@ -825,6 +825,13 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         
         fig_history = go.Figure()
         
+        # Calculate Y-axis range for auto-scaling
+        y_min = history_df_converted['net_worth'].min()
+        y_max = history_df_converted['net_worth'].max()
+        y_range_padding = (y_max - y_min) * 0.15 if y_max != y_min else y_max * 0.05
+        y_axis_min = max(0, y_min - y_range_padding)
+        y_axis_max = y_max + y_range_padding
+        
         fig_history.add_trace(go.Scatter(
             x=history_df_converted['date'],
             y=history_df_converted['net_worth'],
@@ -832,7 +839,7 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
             name=L.DASH_NET_WORTH,
             line=dict(color='#000000', width=3, shape='spline'),
             marker=dict(size=8, color='#000000'),
-            fill='tozeroy',
+            fill='tonexty' if y_axis_min > 0 else 'tozeroy',
             fillcolor='rgba(0, 0, 0, 0.03)',
             hovertemplate='%{x}<br>' + cur_sym + '%{y:,.0f}<extra></extra>'
         ))
@@ -846,7 +853,12 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             xaxis=dict(showgrid=False, linecolor='#E5E7EB'),
-            yaxis=dict(showgrid=True, gridcolor='#F3F4F6', zeroline=False)
+            yaxis=dict(
+                showgrid=True, 
+                gridcolor='#F3F4F6', 
+                zeroline=False,
+                range=[y_axis_min, y_axis_max]  # Auto-scale to data range
+            )
         )
         
         st.plotly_chart(fig_history, use_container_width=True)
