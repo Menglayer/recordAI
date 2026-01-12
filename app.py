@@ -709,13 +709,23 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         st.subheader(L.CHART_ASSET_DIST)
         
         if not net_worth_data['by_symbol'].empty:
+            # Apply currency conversion
+            chart_data = net_worth_data['by_symbol'].copy()
+            chart_data['value'] = chart_data['value'] * fx_rate
+            
             fig_symbol = px.pie(
-                net_worth_data['by_symbol'],
+                chart_data,
                 values='value',
                 names='symbol',
                 title=L.CHART_BY_ASSET,
                 hole=0.6,
                 color_discrete_sequence=MODERN_COLORS
+            )
+            
+            # Fix percentage format to avoid scientific notation
+            fig_symbol.update_traces(
+                texttemplate='%{percent:.1%}',
+                hovertemplate='%{label}<br>%{value:,.0f} ' + cur_sym + '<br>%{percent:.2%}<extra></extra>'
             )
             
             fig_symbol.update_layout(
@@ -735,13 +745,23 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         st.subheader(L.CHART_ACCOUNT_DIST)
         
         if not net_worth_data['by_account'].empty:
+            # Apply currency conversion
+            chart_data = net_worth_data['by_account'].copy()
+            chart_data['value'] = chart_data['value'] * fx_rate
+            
             fig_account = px.pie(
-                net_worth_data['by_account'],
+                chart_data,
                 values='value',
                 names='account_name',
                 title=L.CHART_BY_ACCOUNT,
                 hole=0.6,
                 color_discrete_sequence=MODERN_COLORS[::-1]
+            )
+            
+            # Fix percentage format
+            fig_account.update_traces(
+                texttemplate='%{percent:.1%}',
+                hovertemplate='%{label}<br>%{value:,.0f} ' + cur_sym + '<br>%{percent:.2%}<extra></extra>'
             )
             
             fig_account.update_layout(
@@ -764,6 +784,10 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     history_df = get_net_worth_history()
     
     if not history_df.empty and len(history_df) > 1:
+        # Apply currency conversion
+        history_df_converted = history_df.copy()
+        history_df_converted['net_worth'] = history_df_converted['net_worth'] * fx_rate
+        
         # Check if all values are the same (indicating missing historical prices)
         unique_values = history_df['net_worth'].nunique()
         
@@ -773,14 +797,15 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         fig_history = go.Figure()
         
         fig_history.add_trace(go.Scatter(
-            x=history_df['date'],
-            y=history_df['net_worth'],
-            mode='lines+markers',  # Add markers to show actual data points
+            x=history_df_converted['date'],
+            y=history_df_converted['net_worth'],
+            mode='lines+markers',
             name=L.DASH_NET_WORTH,
             line=dict(color='#000000', width=3, shape='spline'),
             marker=dict(size=8, color='#000000'),
             fill='tozeroy',
-            fillcolor='rgba(0, 0, 0, 0.03)'
+            fillcolor='rgba(0, 0, 0, 0.03)',
+            hovertemplate='%{x}<br>' + cur_sym + '%{y:,.0f}<extra></extra>'
         ))
         
         fig_history.update_layout(
@@ -800,20 +825,20 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         col_stat1, col_stat2, col_stat3 = st.columns(3)
         
         with col_stat1:
-            max_nw = history_df['net_worth'].max()
-            max_date = history_df[history_df['net_worth'] == max_nw]['date'].iloc[0]
-            st.metric(L.CHART_ATH, f"${max_nw:,.2f}", delta=f"{max_date}")
+            max_nw = history_df_converted['net_worth'].max()
+            max_date = history_df_converted[history_df_converted['net_worth'] == max_nw]['date'].iloc[0]
+            st.metric(L.CHART_ATH, f"{cur_sym}{max_nw:,.2f}", delta=f"{max_date}")
         
         with col_stat2:
-            min_nw = history_df['net_worth'].min()
-            min_date = history_df[history_df['net_worth'] == min_nw]['date'].iloc[0]
-            st.metric(L.CHART_ATL, f"${min_nw:,.2f}", delta=f"{min_date}")
+            min_nw = history_df_converted['net_worth'].min()
+            min_date = history_df_converted[history_df_converted['net_worth'] == min_nw]['date'].iloc[0]
+            st.metric(L.CHART_ATL, f"{cur_sym}{min_nw:,.2f}", delta=f"{min_date}")
         
         with col_stat3:
-            if len(history_df) >= 2:
-                growth = history_df['net_worth'].iloc[-1] - history_df['net_worth'].iloc[0]
-                growth_pct = (growth / history_df['net_worth'].iloc[0] * 100) if history_df['net_worth'].iloc[0] > 0 else 0
-                st.metric(L.CHART_GROWTH, f"${growth:,.2f}", delta=f"{growth_pct:.2f}%")
+            if len(history_df_converted) >= 2:
+                growth = history_df_converted['net_worth'].iloc[-1] - history_df_converted['net_worth'].iloc[0]
+                growth_pct = (growth / history_df_converted['net_worth'].iloc[0] * 100) if history_df_converted['net_worth'].iloc[0] > 0 else 0
+                st.metric(L.CHART_GROWTH, f"{cur_sym}{growth:,.2f}", delta=f"{growth_pct:.2f}%")
     
     elif len(history_df) == 1:
         st.info(L.CHART_NEED_2)
@@ -828,8 +853,8 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     if not net_worth_data['details'].empty:
         details_display = net_worth_data['details'].copy()
         details_display['quantity'] = details_display['quantity'].apply(lambda x: f"{x:,.8f}".rstrip('0').rstrip('.'))
-        details_display['price'] = details_display['price'].apply(lambda x: f"${x:,.2f}")
-        details_display['value'] = details_display['value'].apply(lambda x: f"${x:,.2f}")
+        details_display['price'] = details_display['price'].apply(lambda x: f"{cur_sym}{x * fx_rate:,.2f}")
+        details_display['value'] = details_display['value'].apply(lambda x: f"{cur_sym}{x * fx_rate:,.2f}")
         details_display = details_display[['account_name', 'symbol', 'quantity', 'price', 'value']]
         details_display.columns = [L.HOLDINGS_ACCOUNT, L.HOLDINGS_ASSET, L.HOLDINGS_QTY, L.HOLDINGS_PRICE, L.HOLDINGS_VALUE]
         
