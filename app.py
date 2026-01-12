@@ -696,12 +696,23 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     
     st.markdown("---")
     
+    # Time Period Filter
+    st.markdown("##### 📈 数据可视化")
+    filter_col1, filter_col2, _ = st.columns([1, 1, 2])
+    with filter_col1:
+        time_filter = st.segmented_control(
+            "时间筛选",
+            options=["7D", "30D", "90D", "全部"],
+            default="全部",
+            label_visibility="collapsed"
+        )
+    
     # Charts
     if net_worth_data['details'].empty or net_worth_data['details']['price'].sum() == 0:
         st.warning(L.CHART_MISSING_PRICE)
     
     # Falcon Finance Colors: Emerald (USDT style), Orange, Blue, Indigo, Amber
-    MODERN_COLORS = ['#10B981', '#F97316', '#0EA5E9', '#6366F1', '#F59E0B', '#EC4899', '#8B5CF6']
+    MODERN_COLORS = ['#10B981', '#F97316', '#0EA5E9', '#6366F1', '#F59E0B', '#EC4899', '#8B5CF6', '#14B8A6', '#F43F5E']
     
     col_chart1, col_chart2 = st.columns(2)
     
@@ -713,31 +724,30 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
             chart_data = net_worth_data['by_symbol'].copy()
             chart_data['value'] = chart_data['value'] * fx_rate
             
-            fig_symbol = px.pie(
+            # Use Treemap instead of Pie chart for better visual hierarchy
+            fig_treemap = px.treemap(
                 chart_data,
+                path=['symbol'],
                 values='value',
-                names='symbol',
                 title=L.CHART_BY_ASSET,
-                hole=0.6,
-                color_discrete_sequence=MODERN_COLORS
+                color='value',
+                color_continuous_scale=['#E0F2FE', '#0EA5E9', '#1E3A8A'],
             )
             
-            # Fix percentage format to avoid scientific notation
-            fig_symbol.update_traces(
-                texttemplate='%{percent:.1%}',
-                hovertemplate='%{label}<br>%{value:,.0f} ' + cur_sym + '<br>%{percent:.2%}<extra></extra>'
+            fig_treemap.update_traces(
+                texttemplate='<b>%{label}</b><br>%{value:,.0f} ' + cur_sym,
+                textfont=dict(size=14),
+                hovertemplate='%{label}<br>' + cur_sym + '%{value:,.0f}<br>%{percentParent:.1%}<extra></extra>'
             )
             
-            fig_symbol.update_layout(
+            fig_treemap.update_layout(
                 height=400,
-                margin=dict(l=20, r=20, t=50, b=20),
+                margin=dict(l=10, r=10, t=50, b=10),
                 paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                font=dict(family='Inter', size=12),
-                showlegend=True
+                coloraxis_showscale=False
             )
             
-            st.plotly_chart(fig_symbol, use_container_width=True)
+            st.plotly_chart(fig_treemap, use_container_width=True)
         else:
             st.info(L.CHART_NO_DATA)
     
@@ -784,9 +794,28 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     history_df = get_net_worth_history()
     
     if not history_df.empty and len(history_df) > 1:
+        # Apply time filter
+        from datetime import timedelta
+        history_df_filtered = history_df.copy()
+        if time_filter == "7D":
+            cutoff_date = date.today() - timedelta(days=7)
+            history_df_filtered = history_df_filtered[history_df_filtered['date'] >= cutoff_date]
+        elif time_filter == "30D":
+            cutoff_date = date.today() - timedelta(days=30)
+            history_df_filtered = history_df_filtered[history_df_filtered['date'] >= cutoff_date]
+        elif time_filter == "90D":
+            cutoff_date = date.today() - timedelta(days=90)
+            history_df_filtered = history_df_filtered[history_df_filtered['date'] >= cutoff_date]
+        
         # Apply currency conversion
-        history_df_converted = history_df.copy()
+        history_df_converted = history_df_filtered.copy()
         history_df_converted['net_worth'] = history_df_converted['net_worth'] * fx_rate
+        
+        # Check if we have enough data after filtering
+        if len(history_df_converted) < 2:
+            st.info(f"选定时间范围内数据不足，显示全部历史数据")
+            history_df_converted = history_df.copy()
+            history_df_converted['net_worth'] = history_df_converted['net_worth'] * fx_rate
         
         # Check if all values are the same (indicating missing historical prices)
         unique_values = history_df['net_worth'].nunique()
@@ -1269,6 +1298,78 @@ def show_data_view_page():
     
     st.markdown("---")
     st.header(L.VIEW_TITLE)
+    
+    # Export section
+    st.markdown("##### 📥 数据导出")
+    export_col1, export_col2, export_col3, _ = st.columns([1, 1, 1, 1])
+    
+    with export_col1:
+        session = get_session(engine)
+        try:
+            all_snapshots = session.query(Snapshot).order_by(Snapshot.date.desc()).all()
+            if all_snapshots:
+                snapshot_df = pd.DataFrame([{
+                    '日期': s.date,
+                    '账户': s.account_name,
+                    '币种': s.symbol,
+                    '数量': s.quantity
+                } for s in all_snapshots])
+                csv = snapshot_df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button(
+                    "📊 导出快照",
+                    csv,
+                    "snapshots.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+        finally:
+            session.close()
+    
+    with export_col2:
+        session = get_session(engine)
+        try:
+            all_transfers = session.query(Transfer).order_by(Transfer.date.desc()).all()
+            if all_transfers:
+                transfer_df = pd.DataFrame([{
+                    '日期': t.date,
+                    '类型': '入金' if t.type == 'deposit' else '出金',
+                    '金额': t.amount_usd,
+                    '备注': t.note or ''
+                } for t in all_transfers])
+                csv = transfer_df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button(
+                    "💸 导出转账",
+                    csv,
+                    "transfers.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+        finally:
+            session.close()
+    
+    with export_col3:
+        session = get_session(engine)
+        try:
+            all_prices = session.query(PriceHistory).order_by(PriceHistory.date.desc()).all()
+            if all_prices:
+                price_df = pd.DataFrame([{
+                    '日期': p.date,
+                    '币种': p.symbol,
+                    '价格': p.price_usd,
+                    '来源': p.source or 'manual'
+                } for p in all_prices])
+                csv = price_df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button(
+                    "💰 导出价格",
+                    csv,
+                    "prices.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+        finally:
+            session.close()
+    
+    st.markdown("---")
     
     tab1, tab2, tab3 = st.tabs([L.VIEW_SNAPSHOTS, L.VIEW_TRANSFERS, L.VIEW_PRICES])
     
