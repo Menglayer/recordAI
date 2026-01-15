@@ -58,6 +58,22 @@ def clear_data_cache():
     """Clear all cached calculations after data changes"""
     # Clear all st.cache_data functions
     st.cache_data.clear()
+    
+    # Also explicitly clear cached functions (belt and suspenders)
+    for func in [
+        calculate_net_worth_for_date,
+        calculate_current_net_worth,
+        get_net_worth_history,
+        calculate_transfers_summary,
+        calculate_pnl,
+        calculate_time_based_returns,
+        get_sidebar_stats,
+        get_benchmark_roi
+    ]:
+        try:
+            func.clear()
+        except:
+            pass
 
 # ============ Database Functions ============
 
@@ -583,6 +599,20 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     pnl_data = calculate_pnl()
     time_returns = calculate_time_based_returns()
     benchmark_roi = get_benchmark_roi(str(engine.url))
+    
+    # Filter out archived accounts from current display
+    archived = st.session_state.get('archived_accounts', [])
+    if archived and not net_worth_data['details'].empty:
+        filtered_details = net_worth_data['details'][~net_worth_data['details']['account_name'].isin(archived)]
+        
+        # Recalculate totals with filtered data
+        net_worth_data = {
+            'latest_date': net_worth_data['latest_date'],
+            'total_net_worth': filtered_details['value'].sum() if not filtered_details.empty else 0,
+            'details': filtered_details,
+            'by_symbol': filtered_details.groupby('symbol').agg({'quantity': 'sum', 'value': 'sum'}).reset_index() if not filtered_details.empty else pd.DataFrame(),
+            'by_account': filtered_details.groupby('account_name').agg({'value': 'sum'}).reset_index() if not filtered_details.empty else pd.DataFrame()
+        }
 
     # Data date - Enhanced Typography
     st.markdown(f"""
@@ -1332,68 +1362,54 @@ def show_data_view_page():
     st.markdown("---")
     st.header(L.VIEW_TITLE)
     
+    # Initialize archived accounts in session state
+    if 'archived_accounts' not in st.session_state:
+        st.session_state['archived_accounts'] = []
+    
     # Account Management Section
-    st.markdown("##### 🗑️ 账户管理")
+    st.markdown("##### 📦 账户管理")
     
     existing_accounts = get_unique_accounts()
+    active_accounts = [a for a in existing_accounts if a not in st.session_state['archived_accounts']]
+    archived_accounts = [a for a in existing_accounts if a in st.session_state['archived_accounts']]
     
-    if existing_accounts:
-        del_col1, del_col2, del_col3 = st.columns([2, 1, 1])
+    # Archive account
+    if active_accounts:
+        st.markdown("###### 隐藏账户 (历史数据保留)")
+        hide_col1, hide_col2 = st.columns([3, 1])
         
-        with del_col1:
-            account_to_delete = st.selectbox(
-                "选择要删除的账户",
-                options=[""] + existing_accounts,
+        with hide_col1:
+            account_to_hide = st.selectbox(
+                "选择要隐藏的账户",
+                options=[""] + active_accounts,
                 index=0,
                 label_visibility="collapsed",
-                placeholder="选择账户..."
+                placeholder="选择账户...",
+                key="hide_account_select"
             )
         
-        if account_to_delete:
-            # Count records
-            session = get_session(engine)
-            try:
-                record_count = session.query(Snapshot).filter(
-                    Snapshot.account_name == account_to_delete
-                ).count()
-            finally:
-                session.close()
-            
-            with del_col2:
-                st.warning(f"⚠️ {record_count} 条记录")
-            
-            with del_col3:
-                if st.button("🗑️ 删除账户", type="secondary", use_container_width=True):
-                    st.session_state['confirm_delete'] = account_to_delete
-            
-            # Confirmation dialog
-            if st.session_state.get('confirm_delete') == account_to_delete:
-                st.error(f"⚠️ 确定要删除账户 **{account_to_delete}** 的所有 {record_count} 条快照记录吗？此操作不可撤销！")
-                
-                confirm_col1, confirm_col2, _ = st.columns([1, 1, 2])
-                with confirm_col1:
-                    if st.button("✅ 确认删除", type="primary", use_container_width=True):
-                        session = get_session(engine)
-                        try:
-                            session.query(Snapshot).filter(
-                                Snapshot.account_name == account_to_delete
-                            ).delete()
-                            session.commit()
-                            clear_data_cache()
-                            st.success(f"✅ 已删除账户 {account_to_delete} 的 {record_count} 条记录")
-                            st.session_state['confirm_delete'] = None
-                            st.rerun()
-                        except Exception as e:
-                            session.rollback()
-                            st.error(f"删除失败: {e}")
-                        finally:
-                            session.close()
-                
-                with confirm_col2:
-                    if st.button("❌ 取消", use_container_width=True):
-                        st.session_state['confirm_delete'] = None
-                        st.rerun()
-    else:
+        with hide_col2:
+            if account_to_hide and st.button("📦 隐藏", use_container_width=True):
+                st.session_state['archived_accounts'].append(account_to_hide)
+                clear_data_cache()
+                st.success(f"✅ 已隐藏账户 {account_to_hide}（历史数据已保留）")
+                st.rerun()
+    
+    # Restore archived account
+    if archived_accounts:
+        st.markdown("###### 已隐藏的账户")
+        for acc in archived_accounts:
+            restore_col1, restore_col2 = st.columns([3, 1])
+            with restore_col1:
+                st.text(f"📦 {acc}")
+            with restore_col2:
+                if st.button("🔄 恢复", key=f"restore_{acc}", use_container_width=True):
+                    st.session_state['archived_accounts'].remove(acc)
+                    clear_data_cache()
+                    st.success(f"✅ 已恢复账户 {acc}")
+                    st.rerun()
+    
+    if not existing_accounts:
         st.info("暂无账户数据")
     
     st.markdown("---")
