@@ -378,6 +378,13 @@ def calculate_time_based_returns():
         
         hours_per_year = 365.25 * 24
         
+        # APR: Simple annualized return (linear extrapolation)
+        if total_days > 0:
+            apr = (roi / total_days) * 365.25
+        else:
+            apr = 0
+        
+        # APY: Compound annualized return (CAGR)
         if total_hours > 0 and roi > -100:
             apy = (((1 + roi/100) ** (hours_per_year / total_hours)) - 1) * 100
         else:
@@ -386,7 +393,8 @@ def calculate_time_based_returns():
         return {
             'has_data': True,
             'roi': roi,
-            'apy': apy,
+            'apr': apr,  # Simple annualized
+            'apy': apy,  # Compound annualized
             'days': total_days,
             'hours': total_hours,
             'start_date': start_date,
@@ -533,6 +541,10 @@ def main():
         
         fx_rate, cur_sym = get_fx_rate(currency)
         
+        # Show exchange rate
+        if currency != "USD":
+            st.caption(f"💱 1 USD = {fx_rate:.4f} {currency}")
+        
         # Side Navigation
         page = st.radio(
             "Menu", # This will be hidden by CSS
@@ -674,7 +686,7 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
             </div>
             """, unsafe_allow_html=True)
         
-        col_apy1, col_apy2 = st.columns(2)
+        col_apy1, col_apy2, col_apy3 = st.columns(3)
         
         with col_apy1:
             roi_val = f"{time_returns['roi']:.2f}%"
@@ -686,11 +698,20 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
             )
         
         with col_apy2:
+            apr_val = f"{time_returns['apr']:,.2f}%"
+            S.metric_card(
+                label="年化收益 (APR)",
+                value=apr_val,
+                delta="简单年化",
+                delta_up=time_returns['apr'] >= 0
+            )
+        
+        with col_apy3:
             apy_val = f"{time_returns['apy']:,.2f}%"
             S.metric_card(
-                label=L.TIME_APY,
+                label="复利年化 (APY)",
                 value=apy_val,
-                delta=L.TIME_ANNUALIZED if abs(time_returns['apy']) < 1000 else L.TIME_HIGH_VOL,
+                delta="复利计算" if abs(time_returns['apy']) < 1000 else L.TIME_HIGH_VOL,
                 delta_up=time_returns['apy'] >= 0
             )
     
