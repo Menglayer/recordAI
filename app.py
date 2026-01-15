@@ -664,38 +664,72 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         is_masked=privacy_on
     )
     
-    # Goal Progress Bar
+    # Goal Progress Bar - Premium Design
     goal = st.session_state.get('net_worth_goal', 500000)
     current_nw = net_worth_data['total_net_worth']
     progress = min(current_nw / goal, 1.0) if goal > 0 else 0
     progress_pct = progress * 100
     remaining = max(0, goal - current_nw)
     
+    # Determine status and colors
+    if progress >= 1:
+        status_icon = "🎉"
+        status_text = "目标达成！"
+        gradient = "linear-gradient(90deg, #10B981, #34D399)"
+    elif progress >= 0.75:
+        status_icon = "🔥"
+        status_text = f"还差 {cur_sym}{remaining * fx_rate:,.0f}"
+        gradient = "linear-gradient(90deg, #0EA5E9, #38BDF8)"
+    elif progress >= 0.5:
+        status_icon = "📈"
+        status_text = f"还差 {cur_sym}{remaining * fx_rate:,.0f}"
+        gradient = "linear-gradient(90deg, #6366F1, #818CF8)"
+    else:
+        status_icon = "🎯"
+        status_text = f"还差 {cur_sym}{remaining * fx_rate:,.0f}"
+        gradient = "linear-gradient(90deg, #F59E0B, #FBBF24)"
+    
     if not privacy_on:
-        # Progress bar with gradient
-        progress_color = "#10B981" if progress >= 1 else "#0EA5E9"
         st.markdown(f"""
-            <div style="margin: 0.5rem 0 1.5rem 0;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                    <span style="font-size: 0.8rem; color: var(--falcon-muted);">🎯 目标进度</span>
-                    <span style="font-size: 0.8rem; font-weight: 600;">{progress_pct:.1f}%</span>
+            <div class="u-card" style="padding: 1rem 1.25rem; margin: 0.5rem 0 1.5rem 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.2rem;">{status_icon}</span>
+                        <span style="font-size: 0.9rem; font-weight: 600; color: #374151;">目标进度</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <span style="font-size: 1.5rem; font-weight: 700; font-family: Outfit;">{progress_pct:.1f}%</span>
+                    </div>
                 </div>
-                <div style="background: #E5E7EB; border-radius: 10px; height: 10px; overflow: hidden;">
-                    <div style="background: {progress_color}; width: {progress_pct}%; height: 100%; border-radius: 10px; transition: width 0.3s ease;"></div>
+                <div style="background: #F3F4F6; border-radius: 12px; height: 14px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
+                    <div style="background: {gradient}; width: {progress_pct}%; height: 100%; border-radius: 12px; position: relative; transition: width 0.5s ease;">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: shine 2s infinite;"></div>
+                    </div>
                 </div>
-                <div style="font-size: 0.75rem; color: var(--falcon-muted); margin-top: 4px;">
-                    距离目标还差 {cur_sym}{remaining * fx_rate:,.0f}
+                <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.75rem; color: #6B7280;">
+                    <span>当前: {cur_sym}{current_nw * fx_rate:,.0f}</span>
+                    <span style="font-weight: 500;">{status_text}</span>
+                    <span>目标: {cur_sym}{goal * fx_rate:,.0f}</span>
                 </div>
             </div>
+            <style>
+                @keyframes shine {{
+                    0% {{ transform: translateX(-100%); }}
+                    100% {{ transform: translateX(100%); }}
+                }}
+            </style>
         """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
-            <div style="margin: 0.5rem 0 1.5rem 0;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
-                    <span style="font-size: 0.8rem; color: var(--falcon-muted);">🎯 目标进度</span>
-                    <span style="font-size: 0.8rem; font-weight: 600;">••••••</span>
+            <div class="u-card" style="padding: 1rem 1.25rem; margin: 0.5rem 0 1.5rem 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.2rem;">🎯</span>
+                        <span style="font-size: 0.9rem; font-weight: 600; color: #374151;">目标进度</span>
+                    </div>
+                    <span style="font-size: 1.2rem; font-weight: 600;">••••••</span>
                 </div>
-                <div style="background: #E5E7EB; border-radius: 10px; height: 10px;"></div>
+                <div style="background: #F3F4F6; border-radius: 12px; height: 14px;"></div>
             </div>
         """, unsafe_allow_html=True)
     
