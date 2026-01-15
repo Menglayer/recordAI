@@ -1332,6 +1332,72 @@ def show_data_view_page():
     st.markdown("---")
     st.header(L.VIEW_TITLE)
     
+    # Account Management Section
+    st.markdown("##### 🗑️ 账户管理")
+    
+    existing_accounts = get_unique_accounts()
+    
+    if existing_accounts:
+        del_col1, del_col2, del_col3 = st.columns([2, 1, 1])
+        
+        with del_col1:
+            account_to_delete = st.selectbox(
+                "选择要删除的账户",
+                options=[""] + existing_accounts,
+                index=0,
+                label_visibility="collapsed",
+                placeholder="选择账户..."
+            )
+        
+        if account_to_delete:
+            # Count records
+            session = get_session(engine)
+            try:
+                record_count = session.query(Snapshot).filter(
+                    Snapshot.account_name == account_to_delete
+                ).count()
+            finally:
+                session.close()
+            
+            with del_col2:
+                st.warning(f"⚠️ {record_count} 条记录")
+            
+            with del_col3:
+                if st.button("🗑️ 删除账户", type="secondary", use_container_width=True):
+                    st.session_state['confirm_delete'] = account_to_delete
+            
+            # Confirmation dialog
+            if st.session_state.get('confirm_delete') == account_to_delete:
+                st.error(f"⚠️ 确定要删除账户 **{account_to_delete}** 的所有 {record_count} 条快照记录吗？此操作不可撤销！")
+                
+                confirm_col1, confirm_col2, _ = st.columns([1, 1, 2])
+                with confirm_col1:
+                    if st.button("✅ 确认删除", type="primary", use_container_width=True):
+                        session = get_session(engine)
+                        try:
+                            session.query(Snapshot).filter(
+                                Snapshot.account_name == account_to_delete
+                            ).delete()
+                            session.commit()
+                            clear_data_cache()
+                            st.success(f"✅ 已删除账户 {account_to_delete} 的 {record_count} 条记录")
+                            st.session_state['confirm_delete'] = None
+                            st.rerun()
+                        except Exception as e:
+                            session.rollback()
+                            st.error(f"删除失败: {e}")
+                        finally:
+                            session.close()
+                
+                with confirm_col2:
+                    if st.button("❌ 取消", use_container_width=True):
+                        st.session_state['confirm_delete'] = None
+                        st.rerun()
+    else:
+        st.info("暂无账户数据")
+    
+    st.markdown("---")
+    
     # Export section
     st.markdown("##### 📥 数据导出")
     export_col1, export_col2, export_col3, _ = st.columns([1, 1, 1, 1])
