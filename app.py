@@ -561,6 +561,12 @@ def main():
         if currency != "USD":
             st.caption(f"💱 1 USD = {fx_rate:.4f} {currency}")
         
+        # One-click refresh button
+        if st.button("🔄 刷新数据", use_container_width=True):
+            clear_data_cache()
+            st.toast("✅ 缓存已清除，数据已刷新", icon="🔄")
+            st.rerun()
+        
         # Side Navigation
         page = st.radio(
             "Menu", # This will be hidden by CSS
@@ -568,7 +574,26 @@ def main():
             index=0
         )
         
-        st.markdown("<div style='flex-grow:1; height: 100px;'></div>", unsafe_allow_html=True)
+        st.markdown("---")
+        
+        # Goal Tracking
+        st.markdown("##### 🎯 目标追踪")
+        
+        # Initialize goal in session state
+        if 'net_worth_goal' not in st.session_state:
+            st.session_state['net_worth_goal'] = 500000
+        
+        goal = st.number_input(
+            "目标净值 (USD)",
+            min_value=1000,
+            max_value=100000000,
+            value=st.session_state['net_worth_goal'],
+            step=10000,
+            label_visibility="collapsed"
+        )
+        st.session_state['net_worth_goal'] = goal
+        
+        st.markdown("<div style='flex-grow:1; height: 30px;'></div>", unsafe_allow_html=True)
         
         # Bottom Stats Card
         st.markdown('<div class="side-stats">', unsafe_allow_html=True)
@@ -594,11 +619,13 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     """Dashboard page with Benchmarking"""
     st.markdown("---")
     
-    net_worth_data = calculate_current_net_worth()
-    transfers_data = calculate_transfers_summary()
-    pnl_data = calculate_pnl()
-    time_returns = calculate_time_based_returns()
-    benchmark_roi = get_benchmark_roi(str(engine.url))
+    # Loading spinner while calculating data
+    with st.spinner("📊 正在加载数据..."):
+        net_worth_data = calculate_current_net_worth()
+        transfers_data = calculate_transfers_summary()
+        pnl_data = calculate_pnl()
+        time_returns = calculate_time_based_returns()
+        benchmark_roi = get_benchmark_roi(str(engine.url))
     
     # Filter out archived accounts from current display
     archived = st.session_state.get('archived_accounts', [])
@@ -636,6 +663,41 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         value=format_val(net_worth_data['total_net_worth'], fx_rate, cur_sym),
         is_masked=privacy_on
     )
+    
+    # Goal Progress Bar
+    goal = st.session_state.get('net_worth_goal', 500000)
+    current_nw = net_worth_data['total_net_worth']
+    progress = min(current_nw / goal, 1.0) if goal > 0 else 0
+    progress_pct = progress * 100
+    remaining = max(0, goal - current_nw)
+    
+    if not privacy_on:
+        # Progress bar with gradient
+        progress_color = "#10B981" if progress >= 1 else "#0EA5E9"
+        st.markdown(f"""
+            <div style="margin: 0.5rem 0 1.5rem 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--falcon-muted);">🎯 目标进度</span>
+                    <span style="font-size: 0.8rem; font-weight: 600;">{progress_pct:.1f}%</span>
+                </div>
+                <div style="background: #E5E7EB; border-radius: 10px; height: 10px; overflow: hidden;">
+                    <div style="background: {progress_color}; width: {progress_pct}%; height: 100%; border-radius: 10px; transition: width 0.3s ease;"></div>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--falcon-muted); margin-top: 4px;">
+                    距离目标还差 {cur_sym}{remaining * fx_rate:,.0f}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+            <div style="margin: 0.5rem 0 1.5rem 0;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                    <span style="font-size: 0.8rem; color: var(--falcon-muted);">🎯 目标进度</span>
+                    <span style="font-size: 0.8rem; font-weight: 600;">••••••</span>
+                </div>
+                <div style="background: #E5E7EB; border-radius: 10px; height: 10px;"></div>
+            </div>
+        """, unsafe_allow_html=True)
     
     # Other metrics in one row
     col1, col2, col3 = st.columns(3)
