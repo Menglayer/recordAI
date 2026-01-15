@@ -602,16 +602,24 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     
     # Filter out archived accounts from current display
     archived = st.session_state.get('archived_accounts', [])
-    if archived and not net_worth_data['details'].empty:
-        filtered_details = net_worth_data['details'][~net_worth_data['details']['account_name'].isin(archived)]
+    if not net_worth_data['details'].empty:
+        filtered_details = net_worth_data['details'].copy()
         
-        # Recalculate totals with filtered data
+        # Filter out archived accounts
+        if archived:
+            filtered_details = filtered_details[~filtered_details['account_name'].isin(archived)]
+        
+        # Filter out accounts with value < $10 for display (but keep in total)
+        total_net_worth = filtered_details['value'].sum() if not filtered_details.empty else 0
+        display_details = filtered_details[filtered_details['value'] >= 10]
+        
+        # Recalculate display data (excluding small accounts from charts)
         net_worth_data = {
             'latest_date': net_worth_data['latest_date'],
-            'total_net_worth': filtered_details['value'].sum() if not filtered_details.empty else 0,
-            'details': filtered_details,
-            'by_symbol': filtered_details.groupby('symbol').agg({'quantity': 'sum', 'value': 'sum'}).reset_index() if not filtered_details.empty else pd.DataFrame(),
-            'by_account': filtered_details.groupby('account_name').agg({'value': 'sum'}).reset_index() if not filtered_details.empty else pd.DataFrame()
+            'total_net_worth': total_net_worth,  # Total includes all accounts
+            'details': display_details,  # Display excludes < $10
+            'by_symbol': display_details.groupby('symbol').agg({'quantity': 'sum', 'value': 'sum'}).reset_index() if not display_details.empty else pd.DataFrame(),
+            'by_account': display_details.groupby('account_name').agg({'value': 'sum'}).reset_index() if not display_details.empty else pd.DataFrame()
         }
 
     # Data date - Enhanced Typography
