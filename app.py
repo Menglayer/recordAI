@@ -95,7 +95,8 @@ def get_sidebar_stats(_engine):
 def main():
     """Main application"""
     # Apply styles
-    st.markdown(S.BASE_STYLES, unsafe_allow_html=True)
+    S.apply_custom_design()
+
     
     # Check password
     if not check_password():
