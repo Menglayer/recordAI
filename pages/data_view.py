@@ -1,0 +1,195 @@
+"""
+Data view page - View and manage raw data
+"""
+import streamlit as st
+import pandas as pd
+
+from src.models import Snapshot, Transfer, PriceHistory, get_session
+from src import lang as L
+
+
+def show_data_view_page(engine, clear_data_cache, get_unique_accounts, get_recent_snapshots, get_recent_transfers):
+    """Data view page"""
+    
+    st.markdown("---")
+    st.header(L.VIEW_TITLE)
+    
+    # Initialize archived accounts in session state
+    if 'archived_accounts' not in st.session_state:
+        st.session_state['archived_accounts'] = []
+    
+    # Account Management Section
+    st.markdown("##### 📦 账户管理")
+    
+    existing_accounts = get_unique_accounts(engine)
+    active_accounts = [a for a in existing_accounts if a not in st.session_state['archived_accounts']]
+    archived_accounts = [a for a in existing_accounts if a in st.session_state['archived_accounts']]
+    
+    # Archive account
+    if active_accounts:
+        st.markdown("###### 隐藏账户 (历史数据保留)")
+        hide_col1, hide_col2 = st.columns([3, 1])
+        
+        with hide_col1:
+            account_to_hide = st.selectbox(
+                "选择要隐藏的账户",
+                options=[""] + active_accounts,
+                index=0,
+                label_visibility="collapsed",
+                placeholder="选择账户...",
+                key="hide_account_select"
+            )
+        
+        with hide_col2:
+            if account_to_hide and st.button("📦 隐藏", use_container_width=True):
+                st.session_state['archived_accounts'].append(account_to_hide)
+                clear_data_cache()
+                st.success(f"✅ 已隐藏账户 {account_to_hide}（历史数据已保留）")
+                st.rerun()
+    
+    # Restore archived account
+    if archived_accounts:
+        st.markdown("###### 已隐藏的账户")
+        for acc in archived_accounts:
+            restore_col1, restore_col2 = st.columns([3, 1])
+            with restore_col1:
+                st.text(f"📦 {acc}")
+            with restore_col2:
+                if st.button("🔄 恢复", key=f"restore_{acc}", use_container_width=True):
+                    st.session_state['archived_accounts'].remove(acc)
+                    clear_data_cache()
+                    st.success(f"✅ 已恢复账户 {acc}")
+                    st.rerun()
+    
+    if not existing_accounts:
+        st.info("暂无账户数据")
+    
+    st.markdown("---")
+    
+    # Export section
+    st.markdown("##### 📥 数据导出")
+    export_col1, export_col2, export_col3, _ = st.columns([1, 1, 1, 1])
+    
+    with export_col1:
+        session = get_session(engine)
+        try:
+            all_snapshots = session.query(Snapshot).order_by(Snapshot.date.desc()).all()
+            if all_snapshots:
+                snapshot_df = pd.DataFrame([{
+                    '日期': s.date,
+                    '账户': s.account_name,
+                    '币种': s.symbol,
+                    '数量': s.quantity
+                } for s in all_snapshots])
+                csv = snapshot_df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button(
+                    "📊 导出快照",
+                    csv,
+                    "snapshots.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+        finally:
+            session.close()
+    
+    with export_col2:
+        session = get_session(engine)
+        try:
+            all_transfers = session.query(Transfer).order_by(Transfer.date.desc()).all()
+            if all_transfers:
+                transfer_df = pd.DataFrame([{
+                    '日期': t.date,
+                    '类型': '入金' if t.type == 'deposit' else '出金',
+                    '金额': t.amount_usd,
+                    '备注': t.note or ''
+                } for t in all_transfers])
+                csv = transfer_df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button(
+                    "💸 导出转账",
+                    csv,
+                    "transfers.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+        finally:
+            session.close()
+    
+    with export_col3:
+        session = get_session(engine)
+        try:
+            all_prices = session.query(PriceHistory).order_by(PriceHistory.date.desc()).all()
+            if all_prices:
+                price_df = pd.DataFrame([{
+                    '日期': p.date,
+                    '币种': p.symbol,
+                    '价格': p.price_usd,
+                    '来源': p.source or 'manual'
+                } for p in all_prices])
+                csv = price_df.to_csv(index=False).encode('utf-8-sig')
+                st.download_button(
+                    "💰 导出价格",
+                    csv,
+                    "prices.csv",
+                    "text/csv",
+                    use_container_width=True
+                )
+        finally:
+            session.close()
+    
+    st.markdown("---")
+    
+    tab1, tab2, tab3 = st.tabs([L.VIEW_SNAPSHOTS, L.VIEW_TRANSFERS, L.VIEW_PRICES])
+    
+    with tab1:
+        st.subheader(L.VIEW_RECENT + " " + L.VIEW_SNAPSHOTS)
+        snapshots = get_recent_snapshots(engine, 20)
+        
+        if not snapshots.empty:
+            data = [{
+                L.ENTRY_DATE: row['date'],
+                L.ENTRY_ACCOUNT: row['account_name'],
+                L.ENTRY_SYMBOL: row['symbol'],
+                L.ENTRY_QUANTITY: f"{row['quantity']:,.8f}".rstrip('0').rstrip('.')
+            } for _, row in snapshots.iterrows()]
+            
+            st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
+        else:
+            st.info(L.VIEW_NO_DATA)
+    
+    with tab2:
+        st.subheader(L.VIEW_RECENT + " " + L.VIEW_TRANSFERS)
+        transfers = get_recent_transfers(engine, 20)
+        
+        if not transfers.empty:
+            data = [{
+                L.ENTRY_DATE: row['date'],
+                L.TRANSFER_TYPE: L.TRANSFER_DEPOSIT if row['type'] == "deposit" else L.TRANSFER_WITHDRAWAL,
+                L.TRANSFER_AMOUNT: f"${row['amount_usd']:,.2f}",
+                L.TRANSFER_NOTE: row['note'] or ''
+            } for _, row in transfers.iterrows()]
+            
+            st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
+        else:
+            st.info(L.VIEW_NO_DATA)
+    
+    with tab3:
+        st.subheader(L.VIEW_RECENT + " " + L.VIEW_PRICES)
+        session = get_session(engine)
+        try:
+            prices = session.query(PriceHistory).order_by(
+                PriceHistory.date.desc()
+            ).limit(50).all()
+            
+            if prices:
+                data = [{
+                    L.ENTRY_DATE: p.date,
+                    L.PRICE_SYMBOL: p.symbol,
+                    L.PRICE_PRICE: f"${p.price_usd:,.4f}",
+                    L.VIEW_SOURCE: p.source or 'manual'
+                } for p in prices]
+                
+                st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
+            else:
+                st.info(L.VIEW_NO_DATA)
+        finally:
+            session.close()
