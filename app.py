@@ -674,62 +674,92 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     # Determine status and colors
     if progress >= 1:
         status_icon = "🎉"
-        status_text = "目标达成！"
-        gradient = "linear-gradient(90deg, #10B981, #34D399)"
+        status_text = "恭喜！目标达成！"
+        gradient = "linear-gradient(90deg, #10B981, #34D399, #6EE7B7)"
+        glow_color = "rgba(16, 185, 129, 0.4)"
     elif progress >= 0.75:
         status_icon = "🔥"
-        status_text = f"还差 {cur_sym}{remaining * fx_rate:,.0f}"
-        gradient = "linear-gradient(90deg, #0EA5E9, #38BDF8)"
+        status_text = f"冲刺中！还差 {cur_sym}{remaining * fx_rate:,.0f}"
+        gradient = "linear-gradient(90deg, #0EA5E9, #38BDF8, #7DD3FC)"
+        glow_color = "rgba(14, 165, 233, 0.4)"
     elif progress >= 0.5:
         status_icon = "📈"
-        status_text = f"还差 {cur_sym}{remaining * fx_rate:,.0f}"
-        gradient = "linear-gradient(90deg, #6366F1, #818CF8)"
+        status_text = f"进展顺利！还差 {cur_sym}{remaining * fx_rate:,.0f}"
+        gradient = "linear-gradient(90deg, #6366F1, #818CF8, #A5B4FC)"
+        glow_color = "rgba(99, 102, 241, 0.4)"
     else:
         status_icon = "🎯"
-        status_text = f"还差 {cur_sym}{remaining * fx_rate:,.0f}"
-        gradient = "linear-gradient(90deg, #F59E0B, #FBBF24)"
+        status_text = f"努力中！还差 {cur_sym}{remaining * fx_rate:,.0f}"
+        gradient = "linear-gradient(90deg, #F59E0B, #FBBF24, #FDE047)"
+        glow_color = "rgba(245, 158, 11, 0.4)"
     
     if not privacy_on:
         st.markdown(f"""
-            <div class="u-card" style="padding: 1rem 1.25rem; margin: 0.5rem 0 1.5rem 0;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1.2rem;">{status_icon}</span>
-                        <span style="font-size: 0.9rem; font-weight: 600; color: #374151;">目标进度</span>
+            <div class="u-card" style="padding: 1.5rem; margin: 0.5rem 0 2rem 0; position: relative; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 2rem; animation: bounce 1s infinite;">{status_icon}</span>
+                        <div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #1F2937;">目标进度</div>
+                            <div style="font-size: 0.8rem; color: #6B7280; margin-top: 2px;">{status_text}</div>
+                        </div>
                     </div>
                     <div style="text-align: right;">
-                        <span style="font-size: 1.5rem; font-weight: 700; font-family: Outfit;">{progress_pct:.1f}%</span>
+                        <div style="font-size: 2.5rem; font-weight: 800; font-family: Outfit; background: {gradient}; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: pulse 2s infinite;">{progress_pct:.1f}%</div>
                     </div>
                 </div>
-                <div style="background: #F3F4F6; border-radius: 12px; height: 14px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
-                    <div style="background: {gradient}; width: {progress_pct}%; height: 100%; border-radius: 12px; position: relative; transition: width 0.5s ease;">
-                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: shine 2s infinite;"></div>
+                <div style="background: #E5E7EB; border-radius: 16px; height: 28px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); position: relative;">
+                    <div class="progress-fill" style="background: {gradient}; width: {progress_pct}%; height: 100%; border-radius: 16px; position: relative; box-shadow: 0 0 20px {glow_color}, 0 0 40px {glow_color}; animation: glow 2s ease-in-out infinite;">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%); animation: shine 2s ease-in-out infinite;"></div>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75rem; font-weight: 700; color: white; text-shadow: 0 1px 2px rgba(0,0,0,0.3);"></div>
                     </div>
                 </div>
-                <div style="display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.75rem; color: #6B7280;">
-                    <span>当前: {cur_sym}{current_nw * fx_rate:,.0f}</span>
-                    <span style="font-weight: 500;">{status_text}</span>
-                    <span>目标: {cur_sym}{goal * fx_rate:,.0f}</span>
+                <div style="display: flex; justify-content: space-between; margin-top: 14px; font-size: 0.85rem;">
+                    <div style="text-align: left;">
+                        <div style="color: #9CA3AF; font-size: 0.7rem; text-transform: uppercase;">当前</div>
+                        <div style="font-weight: 700; color: #374151; font-family: Outfit;">{cur_sym}{current_nw * fx_rate:,.0f}</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="color: #9CA3AF; font-size: 0.7rem; text-transform: uppercase;">进度</div>
+                        <div style="font-weight: 700; color: #374151;">{progress_pct:.1f}%</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="color: #9CA3AF; font-size: 0.7rem; text-transform: uppercase;">目标</div>
+                        <div style="font-weight: 700; color: #374151; font-family: Outfit;">{cur_sym}{goal * fx_rate:,.0f}</div>
+                    </div>
                 </div>
             </div>
             <style>
                 @keyframes shine {{
                     0% {{ transform: translateX(-100%); }}
+                    50% {{ transform: translateX(100%); }}
                     100% {{ transform: translateX(100%); }}
+                }}
+                @keyframes glow {{
+                    0%, 100% {{ box-shadow: 0 0 15px {glow_color}, 0 0 30px {glow_color}; }}
+                    50% {{ box-shadow: 0 0 25px {glow_color}, 0 0 50px {glow_color}; }}
+                }}
+                @keyframes pulse {{
+                    0%, 100% {{ opacity: 1; }}
+                    50% {{ opacity: 0.8; }}
+                }}
+                @keyframes bounce {{
+                    0%, 100% {{ transform: translateY(0); }}
+                    50% {{ transform: translateY(-5px); }}
                 }}
             </style>
         """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
-            <div class="u-card" style="padding: 1rem 1.25rem; margin: 0.5rem 0 1.5rem 0;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1.2rem;">🎯</span>
-                        <span style="font-size: 0.9rem; font-weight: 600; color: #374151;">目标进度</span>
+            <div class="u-card" style="padding: 1.5rem; margin: 0.5rem 0 2rem 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 2rem;">🎯</span>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #1F2937;">目标进度</div>
                     </div>
-                    <span style="font-size: 1.2rem; font-weight: 600;">••••••</span>
+                    <span style="font-size: 1.5rem; font-weight: 600;">••••••</span>
                 </div>
-                <div style="background: #F3F4F6; border-radius: 12px; height: 14px;"></div>
+                <div style="background: #E5E7EB; border-radius: 16px; height: 28px;"></div>
             </div>
         """, unsafe_allow_html=True)
     
