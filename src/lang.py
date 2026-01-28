@@ -14,6 +14,11 @@ NAV_PRICE_UPDATE = "价格更新"
 NAV_DATA_VIEW = "数据查看"
 NAV_TIPS = "使用提示"
 
+# Aliases for app.py compatibility
+NAV_ENTRY = NAV_DATA_ENTRY
+NAV_PRICES = NAV_PRICE_UPDATE
+NAV_DATA = NAV_DATA_VIEW
+
 # Sidebar
 SIDEBAR_NAV = "导航"
 SIDEBAR_STATS = "数据统计"
