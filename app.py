@@ -1236,11 +1236,14 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
             )
         
         # Common layout settings for both views
+        chart_height = 480 if len(selected_benchmarks) > 0 else 420
+        bottom_margin = 60 if len(selected_benchmarks) > 0 else 20
+        
         fig_history.update_layout(
             xaxis_title=None,
             yaxis_title=None,
-            height=420,
-            margin=dict(l=20, r=20, t=70, b=20),
+            height=chart_height,
+            margin=dict(l=20, r=20, t=70, b=bottom_margin),
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             xaxis=dict(
@@ -1259,12 +1262,14 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
             showlegend=len(selected_benchmarks) > 0,
             legend=dict(
                 orientation='h',
-                yanchor='bottom',
-                y=1.02,
-                xanchor='right',
-                x=1,
-                font=dict(size=11, family='Inter'),
-                bgcolor='rgba(255,255,255,0.8)'
+                yanchor='top',
+                y=-0.12,
+                xanchor='center',
+                x=0.5,
+                font=dict(size=10, family='Inter'),
+                bgcolor='rgba(255,255,255,0.8)',
+                itemsizing='constant',
+                itemwidth=30
             )
         )
         
