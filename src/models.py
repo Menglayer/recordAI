@@ -24,6 +24,9 @@ class Snapshot(Base):
     def __repr__(self):
         return f"<Snapshot(date={self.date}, account={self.account_name}, symbol={self.symbol}, qty={self.quantity})>"
 
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 
 class Transfer(Base):
     """资金流水表 - 记录外部资金进出（存入/提取）"""
@@ -39,6 +42,9 @@ class Transfer(Base):
     def __repr__(self):
         return f"<Transfer(date={self.date}, type={self.type}, amount=${self.amount_usd})>"
 
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
 
 class PriceHistory(Base):
     """价格历史表 - 存储各资产的历史价格"""
@@ -53,6 +59,9 @@ class PriceHistory(Base):
     
     def __repr__(self):
         return f"<PriceHistory(date={self.date}, symbol={self.symbol}, price=${self.price_usd})>"
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
 
 
 def get_engine(db_url='local_ledger.db'):
