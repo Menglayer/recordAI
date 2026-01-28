@@ -1079,13 +1079,6 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         
         fig_history = go.Figure()
         
-        # Calculate Y-axis range for auto-scaling
-        y_min = history_df_converted['net_worth'].min()
-        y_max = history_df_converted['net_worth'].max()
-        y_range_padding = (y_max - y_min) * 0.15 if y_max != y_min else y_max * 0.05
-        y_axis_min = max(0, y_min - y_range_padding)
-        y_axis_max = y_max + y_range_padding
-        
         # Determine trend color
         first_val = history_df_converted['net_worth'].iloc[0]
         last_val = history_df_converted['net_worth'].iloc[-1]
@@ -1094,52 +1087,36 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         if is_up:
             line_color = '#10B981'  # Green
             fill_color = 'rgba(16, 185, 129, 0.15)'
-            marker_color = '#059669'
         else:
             line_color = '#EF4444'  # Red
             fill_color = 'rgba(239, 68, 68, 0.15)'
-            marker_color = '#DC2626'
         
-        # Add gradient-like effect with multiple traces
-        fig_history.add_trace(go.Scatter(
-            x=history_df_converted['date'],
-            y=history_df_converted['net_worth'],
-            mode='lines',
-            name='',
-            line=dict(color=line_color, width=4, shape='spline', smoothing=1.3),
-            fill='tozeroy',
-            fillcolor=fill_color,
-            hoverinfo='skip',
-            showlegend=False
-        ))
+        # Check if we need benchmark comparison mode (percentage view)
+        use_pct_view = len(selected_benchmarks) > 0
         
-        # Main line with markers - My Portfolio
-        fig_history.add_trace(go.Scatter(
-            x=history_df_converted['date'],
-            y=history_df_converted['net_worth'],
-            mode='lines+markers',
-            name='我的组合',
-            line=dict(color=line_color, width=3, shape='spline', smoothing=1.3),
-            marker=dict(
-                size=10,
-                color='white',
-                line=dict(color=line_color, width=3),
-                symbol='circle'
-            ),
-            hovertemplate='<b>%{x}</b><br>' + 
-                          '<span style="font-size:16px;font-weight:bold;">' + cur_sym + '%{y:,.0f}</span>' +
-                          '<extra></extra>'
-        ))
-        
-        # Add benchmark lines if selected
-        benchmark_colors = {
-            'S&P500': '#6366F1',  # Indigo
-            'QQQ': '#8B5CF6',     # Purple
-            'BTC': '#F59E0B',     # Amber
-            '沪深300': '#EF4444'  # Red
-        }
-        
-        if selected_benchmarks:
+        if use_pct_view:
+            # Calculate percentage change for portfolio
+            history_df_converted['pct_change'] = ((history_df_converted['net_worth'] / first_val) - 1) * 100
+            
+            # Portfolio percentage line
+            fig_history.add_trace(go.Scatter(
+                x=history_df_converted['date'],
+                y=history_df_converted['pct_change'],
+                mode='lines+markers',
+                name='我的组合',
+                line=dict(color=line_color, width=3, shape='spline', smoothing=1.3),
+                marker=dict(size=8, color='white', line=dict(color=line_color, width=2)),
+                hovertemplate='<b>我的组合</b><br>%{y:.2f}%<extra></extra>'
+            ))
+            
+            # Fetch and add benchmarks
+            benchmark_colors = {
+                'S&P500': '#6366F1',
+                'QQQ': '#8B5CF6',
+                'BTC': '#F59E0B',
+                '沪深300': '#EF4444'
+            }
+            
             start_date = history_df_converted['date'].min()
             end_date = history_df_converted['date'].max()
             
@@ -1148,16 +1125,15 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
             
             for bench_name in selected_benchmarks:
                 if bench_name in benchmark_data:
-                    bench_df = benchmark_data[bench_name]
+                    bench_df = benchmark_data[bench_name].copy()
                     
                     if len(bench_df) > 0:
-                        # Normalize benchmark to match portfolio starting value
-                        bench_start_price = bench_df['price'].iloc[0]
-                        bench_df['normalized'] = (bench_df['price'] / bench_start_price) * first_val
+                        bench_start = bench_df['price'].iloc[0]
+                        bench_df['pct_change'] = ((bench_df['price'] / bench_start) - 1) * 100
                         
                         fig_history.add_trace(go.Scatter(
                             x=bench_df['date'],
-                            y=bench_df['normalized'],
+                            y=bench_df['pct_change'],
                             mode='lines',
                             name=bench_name,
                             line=dict(
@@ -1165,48 +1141,102 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
                                 width=2,
                                 dash='dot'
                             ),
-                            hovertemplate=f'<b>{bench_name}</b><br>' + cur_sym + '%{y:,.0f}<extra></extra>'
+                            hovertemplate=f'<b>{bench_name}</b><br>' + '%{y:.2f}%<extra></extra>'
                         ))
             
-            # Show which benchmarks were loaded
+            # Show loading status
             loaded = [b for b in selected_benchmarks if b in benchmark_data]
             not_loaded = [b for b in selected_benchmarks if b not in benchmark_data]
-            
             if loaded:
                 st.caption(f"✅ 已加载: {', '.join(loaded)}")
             if not_loaded:
-                st.caption(f"⚠️ 无法获取: {', '.join(not_loaded)}（可能是数据源限制）")
+                st.caption(f"⚠️ 无法获取: {', '.join(not_loaded)}")
+            
+            # Calculate Y-axis range for percentage view
+            all_pct = history_df_converted['pct_change'].tolist()
+            for bench_name in selected_benchmarks:
+                if bench_name in benchmark_data:
+                    all_pct.extend(benchmark_data[bench_name]['pct_change'].tolist() if 'pct_change' in benchmark_data[bench_name].columns else [])
+            
+            y_min_pct = min(all_pct) if all_pct else -5
+            y_max_pct = max(all_pct) if all_pct else 5
+            y_padding = (y_max_pct - y_min_pct) * 0.15
+            
+            fig_history.update_layout(
+                title=dict(text="<b>收益率对比</b>", font=dict(size=20, family='Outfit', color='#1F2937'), x=0, xanchor='left'),
+                yaxis=dict(
+                    title="收益率 %",
+                    ticksuffix="%",
+                    range=[y_min_pct - y_padding, y_max_pct + y_padding],
+                    showgrid=True,
+                    gridcolor='rgba(229, 231, 235, 0.6)',
+                    griddash='dot',
+                    zeroline=True,
+                    zerolinecolor='#9CA3AF',
+                    zerolinewidth=1
+                )
+            )
+        else:
+            # Original absolute value view (no benchmarks selected)
+            y_min = history_df_converted['net_worth'].min()
+            y_max = history_df_converted['net_worth'].max()
+            y_range_padding = (y_max - y_min) * 0.15 if y_max != y_min else y_max * 0.05
+            y_axis_min = max(0, y_min - y_range_padding)
+            y_axis_max = y_max + y_range_padding
+            
+            # Fill area
+            fig_history.add_trace(go.Scatter(
+                x=history_df_converted['date'],
+                y=history_df_converted['net_worth'],
+                mode='lines',
+                line=dict(color=line_color, width=4, shape='spline', smoothing=1.3),
+                fill='tozeroy',
+                fillcolor=fill_color,
+                hoverinfo='skip',
+                showlegend=False
+            ))
+            
+            # Main line
+            fig_history.add_trace(go.Scatter(
+                x=history_df_converted['date'],
+                y=history_df_converted['net_worth'],
+                mode='lines+markers',
+                name='我的组合',
+                line=dict(color=line_color, width=3, shape='spline', smoothing=1.3),
+                marker=dict(size=10, color='white', line=dict(color=line_color, width=3)),
+                hovertemplate='<b>%{x}</b><br>' + cur_sym + '%{y:,.0f}<extra></extra>'
+            ))
+            
+            # Add value annotations
+            fig_history.add_annotation(
+                x=history_df_converted['date'].iloc[0], y=first_val,
+                text=f"{cur_sym}{first_val:,.0f}", showarrow=False, yshift=20,
+                font=dict(size=11, color='#6B7280', family='Outfit'),
+                bgcolor='rgba(255,255,255,0.8)', borderpad=4
+            )
+            fig_history.add_annotation(
+                x=history_df_converted['date'].iloc[-1], y=last_val,
+                text=f"<b>{cur_sym}{last_val:,.0f}</b>", showarrow=False, yshift=25,
+                font=dict(size=13, color=line_color, family='Outfit'),
+                bgcolor='rgba(255,255,255,0.9)', borderpad=4
+            )
+            
+            fig_history.update_layout(
+                title=dict(text=f"<b>{L.CHART_NW_OVER_TIME}</b>", font=dict(size=20, family='Outfit', color='#1F2937'), x=0, xanchor='left'),
+                yaxis=dict(
+                    showgrid=True,
+                    gridcolor='rgba(229, 231, 235, 0.6)',
+                    griddash='dot',
+                    zeroline=False,
+                    range=[y_axis_min, y_axis_max],
+                    tickprefix=cur_sym,
+                    tickformat=',.0f',
+                    side='right'
+                )
+            )
         
-        # Add start and end point annotations
-        fig_history.add_annotation(
-            x=history_df_converted['date'].iloc[0],
-            y=first_val,
-            text=f"{cur_sym}{first_val:,.0f}",
-            showarrow=False,
-            yshift=20,
-            font=dict(size=11, color='#6B7280', family='Outfit'),
-            bgcolor='rgba(255,255,255,0.8)',
-            borderpad=4
-        )
-        
-        fig_history.add_annotation(
-            x=history_df_converted['date'].iloc[-1],
-            y=last_val,
-            text=f"<b>{cur_sym}{last_val:,.0f}</b>",
-            showarrow=False,
-            yshift=25,
-            font=dict(size=13, color=line_color, family='Outfit'),
-            bgcolor='rgba(255,255,255,0.9)',
-            borderpad=4
-        )
-        
+        # Common layout settings for both views
         fig_history.update_layout(
-            title=dict(
-                text=f"<b>{L.CHART_NW_OVER_TIME}</b>", 
-                font=dict(size=20, family='Outfit', color='#1F2937'),
-                x=0,
-                xanchor='left'
-            ),
             xaxis_title=None,
             yaxis_title=None,
             height=420,
@@ -1218,18 +1248,6 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
                 linecolor='#E5E7EB',
                 tickfont=dict(size=11, color='#6B7280', family='Inter'),
                 tickformat='%m/%d',
-            ),
-            yaxis=dict(
-                showgrid=True, 
-                gridcolor='rgba(229, 231, 235, 0.6)', 
-                gridwidth=1,
-                griddash='dot',
-                zeroline=False,
-                range=[y_axis_min, y_axis_max],
-                tickfont=dict(size=11, color='#6B7280', family='Outfit'),
-                tickprefix=cur_sym,
-                tickformat=',.0f',
-                side='right'
             ),
             hovermode='x unified',
             hoverlabel=dict(
