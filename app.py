@@ -454,7 +454,7 @@ def get_net_worth_history():
 def get_benchmark_history(start_date, end_date):
     """Fetch benchmark price history using yfinance"""
     import yfinance as yf
-    from datetime import datetime
+    from datetime import datetime, timedelta, date
     
     benchmarks = {
         'S&P500': '^GSPC',
