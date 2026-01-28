@@ -191,7 +191,7 @@ def show_dashboard(
             delta=f"{pnl_data['roi_percentage']:.2f}%",
             delta_up=pnl_value >= 0,
             is_masked=privacy_on,
-            benchmark=f"BTC {benchmark_roi:+.1f}%" if benchmark_roi != 0 else None
+            benchmark=f"BTC {benchmark_roi:+.1f}%" if (benchmark_roi is not None and benchmark_roi != 0) else None
         )
     
     with col3:
