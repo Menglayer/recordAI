@@ -454,6 +454,7 @@ def get_net_worth_history():
 def get_benchmark_history(start_date, end_date):
     """Fetch benchmark price history using yfinance"""
     import yfinance as yf
+    from datetime import datetime
     
     benchmarks = {
         'S&P500': '^GSPC',
@@ -464,21 +465,45 @@ def get_benchmark_history(start_date, end_date):
     
     result = {}
     
+    # Convert dates to string format for yfinance
+    if isinstance(start_date, date):
+        start_str = start_date.strftime('%Y-%m-%d')
+    else:
+        start_str = str(start_date)
+    
+    if isinstance(end_date, date):
+        end_str = (end_date + timedelta(days=1)).strftime('%Y-%m-%d')
+    else:
+        end_str = str(end_date)
+    
     for name, ticker in benchmarks.items():
         try:
             data = yf.download(
                 ticker, 
-                start=start_date, 
-                end=end_date + timedelta(days=1),
-                progress=False
+                start=start_str, 
+                end=end_str,
+                progress=False,
+                auto_adjust=True
             )
+            
             if not data.empty:
+                # Handle multi-level columns (yfinance sometimes returns this)
+                if isinstance(data.columns, pd.MultiIndex):
+                    data.columns = data.columns.get_level_values(0)
+                
                 # Get closing prices
-                prices = data['Close'].reset_index()
+                prices = data[['Close']].reset_index()
                 prices.columns = ['date', 'price']
+                
+                # Convert date to date object for consistency
                 prices['date'] = pd.to_datetime(prices['date']).dt.date
-                result[name] = prices
-        except:
+                prices['price'] = pd.to_numeric(prices['price'], errors='coerce')
+                prices = prices.dropna()
+                
+                if len(prices) > 0:
+                    result[name] = prices
+        except Exception as e:
+            # Silently skip failed benchmarks
             pass
     
     return result
@@ -1142,6 +1167,15 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
                             ),
                             hovertemplate=f'<b>{bench_name}</b><br>' + cur_sym + '%{y:,.0f}<extra></extra>'
                         ))
+            
+            # Show which benchmarks were loaded
+            loaded = [b for b in selected_benchmarks if b in benchmark_data]
+            not_loaded = [b for b in selected_benchmarks if b not in benchmark_data]
+            
+            if loaded:
+                st.caption(f"✅ 已加载: {', '.join(loaded)}")
+            if not_loaded:
+                st.caption(f"⚠️ 无法获取: {', '.join(not_loaded)}（可能是数据源限制）")
         
         # Add start and end point annotations
         fig_history.add_annotation(
