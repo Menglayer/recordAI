@@ -1017,36 +1017,116 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         y_axis_min = max(0, y_min - y_range_padding)
         y_axis_max = y_max + y_range_padding
         
+        # Determine trend color
+        first_val = history_df_converted['net_worth'].iloc[0]
+        last_val = history_df_converted['net_worth'].iloc[-1]
+        is_up = last_val >= first_val
+        
+        if is_up:
+            line_color = '#10B981'  # Green
+            fill_color = 'rgba(16, 185, 129, 0.15)'
+            marker_color = '#059669'
+        else:
+            line_color = '#EF4444'  # Red
+            fill_color = 'rgba(239, 68, 68, 0.15)'
+            marker_color = '#DC2626'
+        
+        # Add gradient-like effect with multiple traces
+        fig_history.add_trace(go.Scatter(
+            x=history_df_converted['date'],
+            y=history_df_converted['net_worth'],
+            mode='lines',
+            name='',
+            line=dict(color=line_color, width=4, shape='spline', smoothing=1.3),
+            fill='tozeroy',
+            fillcolor=fill_color,
+            hoverinfo='skip',
+            showlegend=False
+        ))
+        
+        # Main line with markers
         fig_history.add_trace(go.Scatter(
             x=history_df_converted['date'],
             y=history_df_converted['net_worth'],
             mode='lines+markers',
             name=L.DASH_NET_WORTH,
-            line=dict(color='#000000', width=3, shape='spline'),
-            marker=dict(size=8, color='#000000'),
-            fill='tonexty' if y_axis_min > 0 else 'tozeroy',
-            fillcolor='rgba(0, 0, 0, 0.03)',
-            hovertemplate='%{x}<br>' + cur_sym + '%{y:,.0f}<extra></extra>'
+            line=dict(color=line_color, width=3, shape='spline', smoothing=1.3),
+            marker=dict(
+                size=10,
+                color='white',
+                line=dict(color=line_color, width=3),
+                symbol='circle'
+            ),
+            hovertemplate='<b>%{x}</b><br>' + 
+                          '<span style="font-size:16px;font-weight:bold;">' + cur_sym + '%{y:,.0f}</span>' +
+                          '<extra></extra>'
         ))
         
-        fig_history.update_layout(
-            title=dict(text=L.CHART_NW_OVER_TIME, font=dict(size=18, family='Outfit')),
-            xaxis_title=None,
-            yaxis_title=None,
-            height=400,
-            margin=dict(l=0, r=0, t=60, b=0),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            xaxis=dict(showgrid=False, linecolor='#E5E7EB'),
-            yaxis=dict(
-                showgrid=True, 
-                gridcolor='#F3F4F6', 
-                zeroline=False,
-                range=[y_axis_min, y_axis_max]  # Auto-scale to data range
-            )
+        # Add start and end point annotations
+        fig_history.add_annotation(
+            x=history_df_converted['date'].iloc[0],
+            y=first_val,
+            text=f"{cur_sym}{first_val:,.0f}",
+            showarrow=False,
+            yshift=20,
+            font=dict(size=11, color='#6B7280', family='Outfit'),
+            bgcolor='rgba(255,255,255,0.8)',
+            borderpad=4
         )
         
-        st.plotly_chart(fig_history, use_container_width=True)
+        fig_history.add_annotation(
+            x=history_df_converted['date'].iloc[-1],
+            y=last_val,
+            text=f"<b>{cur_sym}{last_val:,.0f}</b>",
+            showarrow=False,
+            yshift=25,
+            font=dict(size=13, color=line_color, family='Outfit'),
+            bgcolor='rgba(255,255,255,0.9)',
+            borderpad=4
+        )
+        
+        fig_history.update_layout(
+            title=dict(
+                text=f"<b>{L.CHART_NW_OVER_TIME}</b>", 
+                font=dict(size=20, family='Outfit', color='#1F2937'),
+                x=0,
+                xanchor='left'
+            ),
+            xaxis_title=None,
+            yaxis_title=None,
+            height=420,
+            margin=dict(l=20, r=20, t=70, b=20),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            xaxis=dict(
+                showgrid=False, 
+                linecolor='#E5E7EB',
+                tickfont=dict(size=11, color='#6B7280', family='Inter'),
+                tickformat='%m/%d',
+            ),
+            yaxis=dict(
+                showgrid=True, 
+                gridcolor='rgba(229, 231, 235, 0.6)', 
+                gridwidth=1,
+                griddash='dot',
+                zeroline=False,
+                range=[y_axis_min, y_axis_max],
+                tickfont=dict(size=11, color='#6B7280', family='Outfit'),
+                tickprefix=cur_sym,
+                tickformat=',.0f',
+                side='right'
+            ),
+            hovermode='x unified',
+            hoverlabel=dict(
+                bgcolor='white',
+                font_size=14,
+                font_family='Inter',
+                bordercolor='#E5E7EB'
+            ),
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig_history, use_container_width=True, config={'displayModeBar': False})
         
         col_stat1, col_stat2, col_stat3 = st.columns(3)
         
