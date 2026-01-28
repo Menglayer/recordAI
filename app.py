@@ -450,6 +450,40 @@ def get_net_worth_history():
         session.close()
 
 
+@st.cache_data(ttl=3600)
+def get_benchmark_history(start_date, end_date):
+    """Fetch benchmark price history using yfinance"""
+    import yfinance as yf
+    
+    benchmarks = {
+        'S&P500': '^GSPC',
+        'QQQ': 'QQQ',
+        'BTC': 'BTC-USD',
+        '沪深300': '000300.SS'
+    }
+    
+    result = {}
+    
+    for name, ticker in benchmarks.items():
+        try:
+            data = yf.download(
+                ticker, 
+                start=start_date, 
+                end=end_date + timedelta(days=1),
+                progress=False
+            )
+            if not data.empty:
+                # Get closing prices
+                prices = data['Close'].reset_index()
+                prices.columns = ['date', 'price']
+                prices['date'] = pd.to_datetime(prices['date']).dt.date
+                result[name] = prices
+        except:
+            pass
+    
+    return result
+
+
 # ============ Authentication ============
 
 def check_password():
@@ -976,6 +1010,16 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
     # History chart
     st.subheader(L.CHART_HISTORY)
     
+    # Benchmark selector
+    benchmark_options = ['S&P500', 'QQQ', 'BTC', '沪深300']
+    selected_benchmarks = st.multiselect(
+        "📊 对比基准",
+        options=benchmark_options,
+        default=[],
+        help="选择要与您的资产组合进行对比的基准指数",
+        placeholder="选择基准指数..."
+    )
+    
     history_df = get_net_worth_history()
     
     if not history_df.empty and len(history_df) > 1:
@@ -1044,12 +1088,12 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
             showlegend=False
         ))
         
-        # Main line with markers
+        # Main line with markers - My Portfolio
         fig_history.add_trace(go.Scatter(
             x=history_df_converted['date'],
             y=history_df_converted['net_worth'],
             mode='lines+markers',
-            name=L.DASH_NET_WORTH,
+            name='我的组合',
             line=dict(color=line_color, width=3, shape='spline', smoothing=1.3),
             marker=dict(
                 size=10,
@@ -1061,6 +1105,43 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
                           '<span style="font-size:16px;font-weight:bold;">' + cur_sym + '%{y:,.0f}</span>' +
                           '<extra></extra>'
         ))
+        
+        # Add benchmark lines if selected
+        benchmark_colors = {
+            'S&P500': '#6366F1',  # Indigo
+            'QQQ': '#8B5CF6',     # Purple
+            'BTC': '#F59E0B',     # Amber
+            '沪深300': '#EF4444'  # Red
+        }
+        
+        if selected_benchmarks:
+            start_date = history_df_converted['date'].min()
+            end_date = history_df_converted['date'].max()
+            
+            with st.spinner("📈 获取基准数据..."):
+                benchmark_data = get_benchmark_history(start_date, end_date)
+            
+            for bench_name in selected_benchmarks:
+                if bench_name in benchmark_data:
+                    bench_df = benchmark_data[bench_name]
+                    
+                    if len(bench_df) > 0:
+                        # Normalize benchmark to match portfolio starting value
+                        bench_start_price = bench_df['price'].iloc[0]
+                        bench_df['normalized'] = (bench_df['price'] / bench_start_price) * first_val
+                        
+                        fig_history.add_trace(go.Scatter(
+                            x=bench_df['date'],
+                            y=bench_df['normalized'],
+                            mode='lines',
+                            name=bench_name,
+                            line=dict(
+                                color=benchmark_colors.get(bench_name, '#9CA3AF'),
+                                width=2,
+                                dash='dot'
+                            ),
+                            hovertemplate=f'<b>{bench_name}</b><br>' + cur_sym + '%{y:,.0f}<extra></extra>'
+                        ))
         
         # Add start and end point annotations
         fig_history.add_annotation(
@@ -1123,7 +1204,16 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
                 font_family='Inter',
                 bordercolor='#E5E7EB'
             ),
-            showlegend=False
+            showlegend=len(selected_benchmarks) > 0,
+            legend=dict(
+                orientation='h',
+                yanchor='bottom',
+                y=1.02,
+                xanchor='right',
+                x=1,
+                font=dict(size=11, family='Inter'),
+                bgcolor='rgba(255,255,255,0.8)'
+            )
         )
         
         st.plotly_chart(fig_history, use_container_width=True, config={'displayModeBar': False})
@@ -1150,6 +1240,99 @@ def show_dashboard(privacy_on=False, fx_rate=1.0, cur_sym="$"):
         st.info(L.CHART_NEED_2)
     else:
         st.info(L.CHART_NO_HISTORY)
+    
+    st.markdown("---")
+    
+    # Monthly Returns Heatmap
+    st.subheader("📅 月度收益热力图")
+    
+    if not history_df.empty and len(history_df) > 1:
+        # Calculate monthly returns
+        history_df_temp = history_df.copy()
+        history_df_temp['date'] = pd.to_datetime(history_df_temp['date'])
+        history_df_temp = history_df_temp.sort_values('date')
+        
+        # Group by month and get first/last values
+        history_df_temp['year'] = history_df_temp['date'].dt.year
+        history_df_temp['month'] = history_df_temp['date'].dt.month
+        
+        monthly_data = []
+        for (year, month), group in history_df_temp.groupby(['year', 'month']):
+            first_val = group['net_worth'].iloc[0]
+            last_val = group['net_worth'].iloc[-1]
+            ret = ((last_val - first_val) / first_val * 100) if first_val > 0 else 0
+            monthly_data.append({'year': year, 'month': month, 'return': ret})
+        
+        monthly_df = pd.DataFrame(monthly_data)
+        
+        if not monthly_df.empty:
+            # Pivot for heatmap
+            months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
+            
+            pivot = monthly_df.pivot(index='year', columns='month', values='return')
+            pivot = pivot.reindex(columns=range(1, 13), fill_value=None)
+            pivot.columns = months
+            
+            # Create heatmap
+            fig_heatmap = go.Figure(data=go.Heatmap(
+                z=pivot.values,
+                x=months,
+                y=pivot.index.astype(str),
+                colorscale=[
+                    [0, '#EF4444'],      # Red for negative
+                    [0.5, '#F9FAFB'],    # White/gray for zero
+                    [1, '#10B981']       # Green for positive
+                ],
+                zmid=0,
+                text=[[f"{v:.1f}%" if pd.notna(v) else "" for v in row] for row in pivot.values],
+                texttemplate="%{text}",
+                textfont={"size": 11, "color": "#1F2937"},
+                hovertemplate="<b>%{y}年 %{x}</b><br>收益率: %{z:.2f}%<extra></extra>",
+                showscale=True,
+                colorbar=dict(
+                    title=dict(text="收益率%", side="right"),
+                    ticksuffix="%",
+                    len=0.6
+                )
+            ))
+            
+            fig_heatmap.update_layout(
+                height=180 + len(pivot) * 40,
+                margin=dict(l=20, r=80, t=30, b=20),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(
+                    side='top',
+                    tickfont=dict(size=11, color='#6B7280', family='Inter')
+                ),
+                yaxis=dict(
+                    tickfont=dict(size=12, color='#1F2937', family='Outfit'),
+                    autorange='reversed'
+                )
+            )
+            
+            st.plotly_chart(fig_heatmap, use_container_width=True, config={'displayModeBar': False})
+            
+            # Summary stats
+            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+            
+            positive_months = (monthly_df['return'] > 0).sum()
+            negative_months = (monthly_df['return'] < 0).sum()
+            total_months = len(monthly_df)
+            avg_return = monthly_df['return'].mean()
+            best_month = monthly_df.loc[monthly_df['return'].idxmax()]
+            worst_month = monthly_df.loc[monthly_df['return'].idxmin()]
+            
+            with col_m1:
+                st.metric("平均月收益", f"{avg_return:.2f}%")
+            with col_m2:
+                st.metric("盈利月份", f"{positive_months}/{total_months}", delta=f"{positive_months/total_months*100:.0f}%")
+            with col_m3:
+                st.metric("最佳月份", f"{int(best_month['year'])}/{int(best_month['month']):02d}", delta=f"+{best_month['return']:.2f}%")
+            with col_m4:
+                st.metric("最差月份", f"{int(worst_month['year'])}/{int(worst_month['month']):02d}", delta=f"{worst_month['return']:.2f}%")
+    else:
+        st.info("需要至少2个月的数据才能显示热力图")
     
     st.markdown("---")
     
