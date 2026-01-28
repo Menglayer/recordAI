@@ -87,7 +87,7 @@ def save_snapshots_batch(snapshot_date, account_name, snapshot_data):
             symbol = str(row['Symbol']).strip().upper()
             quantity = float(row['Quantity'])
             
-            if not symbol or symbol == '' or quantity <= 0:
+            if not symbol or symbol == '' or quantity < 0:
                 continue
             
             existing = session.query(Snapshot).filter(
@@ -1086,6 +1086,32 @@ def show_data_entry_page():
             
             existing_accounts = get_unique_accounts()
             
+            # Get account balances for sorting and display
+            net_worth_data = calculate_current_net_worth()
+            account_balances = {}
+            if not net_worth_data['by_account'].empty:
+                for _, row in net_worth_data['by_account'].iterrows():
+                    account_balances[row['account_name']] = row['value']
+            
+            # Sort accounts by balance (highest first), then alphabetically for zero-balance
+            def get_sort_key(acc):
+                bal = account_balances.get(acc, 0)
+                return (-bal, acc)  # Negative for descending balance, then alphabetical
+            
+            sorted_accounts = sorted(existing_accounts, key=get_sort_key)
+            
+            # Create display options with balance info
+            account_display_map = {}
+            account_options = []
+            for acc in sorted_accounts:
+                bal = account_balances.get(acc, 0)
+                if bal >= 1:
+                    display = f"{acc}  💰 ${bal:,.0f}"
+                else:
+                    display = f"{acc}  ⚪ $0"
+                account_display_map[display] = acc
+                account_options.append(display)
+            
             if existing_accounts:
                 account_input_method = st.radio(
                     L.ENTRY_ACCOUNT,
@@ -1094,12 +1120,13 @@ def show_data_entry_page():
                 )
                 
                 if account_input_method == L.ENTRY_SELECT_EXISTING:
-                    account_name = st.selectbox(
+                    selected_display = st.selectbox(
                         L.ENTRY_ACCOUNT,
-                        options=existing_accounts,
-                        help=f"{L.ENTRY_SELECT_EXISTING}{L.ENTRY_ACCOUNT}",
+                        options=account_options,
+                        help=f"{L.ENTRY_SELECT_EXISTING}{L.ENTRY_ACCOUNT}（按余额排序）",
                         key='account_select'
                     )
+                    account_name = account_display_map.get(selected_display, selected_display.split("  ")[0])
                     
                     # Auto-load previous holdings when account changes
                     prev_account = st.session_state.get('_prev_account', None)
