@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 MyLedger Falcon-Inspired Design System
-Added: Privacy mode support and mobile adaptations.
+Version: 2026-02-02 v4 - HTML Entities for stability
 """
 
 import streamlit as st
 
 def apply_custom_design():
-    """应用更柔和、更专业的 Falcon UI"""
     st.markdown("""
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
     <style>
@@ -29,7 +28,6 @@ def apply_custom_design():
             -webkit-font-smoothing: antialiased;
         }
 
-        /* 响应式容器 */
         .block-container {
             padding-top: 1.5rem !important;
             max-width: 1060px !important;
@@ -37,7 +35,6 @@ def apply_custom_design():
             padding-right: 1rem !important;
         }
 
-        /* 标题适配 */
         h1, h2, h3 {
             font-family: 'Outfit', sans-serif;
             color: var(--falcon-black) !important;
@@ -50,7 +47,6 @@ def apply_custom_design():
             .m-value { font-size: 1.8rem !important; }
         }
 
-        /* 侧边栏按钮 */
         [data-testid="stSidebar"] div[role="radiogroup"] label {
             display: flex !important;
             padding: 9px 16px !important;
@@ -68,7 +64,6 @@ def apply_custom_design():
             color: #FFFFFF !important;
         }
 
-        /* 隐私遮罩效果 */
         .privacy-masked {
             filter: blur(8px);
             user-select: none;
@@ -79,7 +74,6 @@ def apply_custom_design():
             filter: blur(4px);
         }
 
-        /* 统一卡片 */
         .u-card {
             background: var(--falcon-card);
             padding: 24px;
@@ -89,7 +83,6 @@ def apply_custom_design():
             box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
 
-        /* 指标卡片 */
         .m-label {
             font-size: 0.78rem;
             font-weight: 600;
@@ -126,7 +119,6 @@ def apply_custom_design():
         .d-down { background-color: #FEF2F2; color: #DC2626; }
         .d-n { background-color: #F8FAFB; color: #475569; }
 
-        /* 基准对比标签 */
         .benchmark-tag {
             font-size: 0.7rem;
             color: var(--falcon-muted);
@@ -134,7 +126,6 @@ def apply_custom_design():
             font-weight: 500;
         }
 
-        /* 移动端表格优化 */
         [data-testid="stDataFrameResizable"] {
             border-radius: 14px !important;
             overflow: hidden !important;
@@ -142,43 +133,49 @@ def apply_custom_design():
     </style>
     """, unsafe_allow_html=True)
 
+
 def metric_card(label, value, delta=None, delta_up=True, is_masked=False, benchmark=None, subtitle=None):
-    """极致优雅的指标卡片，支持隐私模式、基准对比和副标题"""
-    val_display = value
+    # Prepare display value
+    val_display = str(value)
     if is_masked:
         if "%" not in str(value):
             val_display = '<span class="privacy-masked">$ ••••••</span>'
     
-    # 副标题（如 BTC 本位）- 更醒目的样式
+    # Subtitle with coin icon (using HTML entity for safety)
     subtitle_html = ""
-    if subtitle and not is_masked:
-        subtitle_html = f'<div class="m-subtitle">🪙 {subtitle}</div>'
-    elif subtitle and is_masked:
-        subtitle_html = '<div class="m-subtitle">🪙 ••••• BTC</div>'
+    if subtitle:
+        # Coin icon: &#x1FA99;
+        display_sub = str(subtitle) if not is_masked else "••••• BTC"
+        subtitle_html = f'<div class="m-subtitle">&#x1FA99; {display_sub}</div>'
     
-    # Delta 标签
+    # Delta indicator
     d_html = ""
     if delta:
-        if isinstance(delta_up, bool):
-            clz = "d-up" if delta_up else "d-down"
-            icon = "↗" if delta_up else "↘"
+        # Determine styling and icon based on delta_up
+        if delta_up is True:
+            clz = "d-up"
+            icon = "&#8599;" # NE Arrow
+        elif delta_up is False:
+            clz = "d-down"
+            icon = "&#8600;" # SE Arrow
         else:
             clz = "d-n"
-            icon = "→"
+            icon = "&#8594;" # Right Arrow
         
         bench_html = ""
         if benchmark:
             bench_html = f'<span class="benchmark-tag">vs {benchmark}</span>'
-            
-        d_html = f'<div class="m-delta {clz}"><span>{icon}</span> <span>{delta}</span>{bench_html}</div>'
         
-    st.markdown(f"""
+        d_html = f'<div class="m-delta {clz}"><span>{icon}</span> <span>{delta}</span>{bench_html}</div>'
+    
+    # Build final HTML
+    html = f"""
     <div class="u-card">
         <div class="m-label">{label}</div>
         <div class="m-value">{val_display}</div>
         {subtitle_html}
         {d_html}
     </div>
-    """, unsafe_allow_html=True)
-
-# Version: 2026-02-02 v2 - Fixed HTML rendering
+    """
+    
+    st.markdown(html, unsafe_allow_html=True)
