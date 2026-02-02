@@ -180,3 +180,5 @@ def metric_card(label, value, delta=None, delta_up=True, is_masked=False, benchm
         {d_html}
     </div>
     """, unsafe_allow_html=True)
+
+# Version: 2026-02-02 v2 - Fixed HTML rendering
