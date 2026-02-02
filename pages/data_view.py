@@ -136,6 +136,119 @@ def show_data_view_page(engine, clear_data_cache, get_unique_accounts, get_recen
         finally:
             session.close()
     
+    # 完整备份区域
+    st.markdown("---")
+    st.markdown("##### 💾 完整备份")
+    st.caption("导出所有数据，可用于灾难恢复")
+    
+    backup_col1, backup_col2, _ = st.columns([1, 1, 2])
+    
+    # 生成备份数据
+    session = get_session(engine)
+    try:
+        import json
+        from datetime import datetime
+        
+        # 获取所有数据
+        all_snapshots = session.query(Snapshot).all()
+        all_transfers = session.query(Transfer).all()
+        all_prices = session.query(PriceHistory).all()
+        
+        # 构建 JSON 数据
+        backup_data = {
+            'export_time': str(datetime.utcnow()),
+            'snapshots': [{
+                'id': s.id,
+                'date': str(s.date),
+                'account_name': s.account_name,
+                'symbol': s.symbol,
+                'quantity': s.quantity,
+                'created_at': str(s.created_at) if s.created_at else None
+            } for s in all_snapshots],
+            'transfers': [{
+                'id': t.id,
+                'date': str(t.date),
+                'type': t.type,
+                'amount_usd': t.amount_usd,
+                'note': t.note,
+                'created_at': str(t.created_at) if t.created_at else None
+            } for t in all_transfers],
+            'prices': [{
+                'id': p.id,
+                'date': str(p.date),
+                'symbol': p.symbol,
+                'price_usd': p.price_usd,
+                'source': p.source,
+                'created_at': str(p.created_at) if p.created_at else None
+            } for p in all_prices],
+            'summary': {
+                'total_snapshots': len(all_snapshots),
+                'total_transfers': len(all_transfers),
+                'total_prices': len(all_prices)
+            }
+        }
+        
+        # 生成 SQL 恢复脚本
+        sql_lines = []
+        sql_lines.append("-- MyLedger Backup")
+        sql_lines.append(f"-- Exported at: {backup_data['export_time']}")
+        sql_lines.append("")
+        sql_lines.append("-- Snapshots")
+        for s in backup_data['snapshots']:
+            sql_lines.append(
+                f"INSERT INTO snapshots (date, account_name, symbol, quantity) "
+                f"VALUES ('{s['date']}', '{s['account_name']}', '{s['symbol']}', {s['quantity']});"
+            )
+        sql_lines.append("")
+        sql_lines.append("-- Transfers")
+        for t in backup_data['transfers']:
+            note = (t['note'] or '').replace("'", "''")
+            sql_lines.append(
+                f"INSERT INTO transfers (date, type, amount_usd, note) "
+                f"VALUES ('{t['date']}', '{t['type']}', {t['amount_usd']}, '{note}');"
+            )
+        sql_lines.append("")
+        sql_lines.append("-- Prices")
+        for p in backup_data['prices']:
+            source = (p['source'] or '').replace("'", "''")
+            sql_lines.append(
+                f"INSERT INTO price_history (date, symbol, price_usd, source) "
+                f"VALUES ('{p['date']}', '{p['symbol']}', {p['price_usd']}, '{source}');"
+            )
+        
+        with backup_col1:
+            json_content = json.dumps(backup_data, ensure_ascii=False, indent=2)
+            st.download_button(
+                "📦 下载 JSON 备份",
+                json_content.encode('utf-8'),
+                f"myledger_backup_{datetime.now().strftime('%Y%m%d')}.json",
+                "application/json",
+                use_container_width=True,
+                help="完整数据备份，包含所有快照、转账、价格记录"
+            )
+        
+        with backup_col2:
+            sql_content = "\n".join(sql_lines)
+            st.download_button(
+                "🔧 下载 SQL 脚本",
+                sql_content.encode('utf-8'),
+                f"myledger_restore_{datetime.now().strftime('%Y%m%d')}.sql",
+                "text/plain",
+                use_container_width=True,
+                help="SQL 恢复脚本，可直接在数据库执行"
+            )
+        
+        # 统计信息
+        st.info(
+            f"📊 **数据统计**: "
+            f"快照 {len(all_snapshots)} 条 · "
+            f"转账 {len(all_transfers)} 条 · "
+            f"价格 {len(all_prices)} 条"
+        )
+        
+    finally:
+        session.close()
+    
     st.markdown("---")
     
     tab1, tab2, tab3 = st.tabs([L.VIEW_SNAPSHOTS, L.VIEW_TRANSFERS, L.VIEW_PRICES])

@@ -206,6 +206,170 @@ def calculate_pnl():
         session.close()
 
 
+# ================= /backup 数据备份 =================
+
+import json
+import io
+
+def export_all_data():
+    """导出所有数据"""
+    session = get_db_session()
+    if not session:
+        return None
+    
+    try:
+        # 导出快照
+        snapshots = session.query(Snapshot).all()
+        snapshots_data = [{
+            'id': s.id,
+            'date': str(s.date),
+            'account_name': s.account_name,
+            'symbol': s.symbol,
+            'quantity': s.quantity,
+            'created_at': str(s.created_at) if s.created_at else None
+        } for s in snapshots]
+        
+        # 导出转账
+        transfers = session.query(Transfer).all()
+        transfers_data = [{
+            'id': t.id,
+            'date': str(t.date),
+            'type': t.type,
+            'amount_usd': t.amount_usd,
+            'note': t.note,
+            'created_at': str(t.created_at) if t.created_at else None
+        } for t in transfers]
+        
+        # 导出价格
+        prices = session.query(PriceHistory).all()
+        prices_data = [{
+            'id': p.id,
+            'date': str(p.date),
+            'symbol': p.symbol,
+            'price_usd': p.price_usd,
+            'source': p.source,
+            'created_at': str(p.created_at) if p.created_at else None
+        } for p in prices]
+        
+        return {
+            'export_time': str(datetime.utcnow()),
+            'snapshots': snapshots_data,
+            'transfers': transfers_data,
+            'prices': prices_data,
+            'summary': {
+                'total_snapshots': len(snapshots_data),
+                'total_transfers': len(transfers_data),
+                'total_prices': len(prices_data)
+            }
+        }
+    finally:
+        session.close()
+
+
+def generate_restore_sql(data):
+    """生成恢复用的 SQL 语句"""
+    sql_lines = []
+    sql_lines.append("-- MyLedger Backup")
+    sql_lines.append(f"-- Exported at: {data['export_time']}")
+    sql_lines.append("")
+    
+    # 快照
+    sql_lines.append("-- Snapshots")
+    for s in data['snapshots']:
+        sql_lines.append(
+            f"INSERT INTO snapshots (date, account_name, symbol, quantity) "
+            f"VALUES ('{s['date']}', '{s['account_name']}', '{s['symbol']}', {s['quantity']});"
+        )
+    
+    sql_lines.append("")
+    sql_lines.append("-- Transfers")
+    for t in data['transfers']:
+        note = t['note'].replace("'", "''") if t['note'] else ''
+        sql_lines.append(
+            f"INSERT INTO transfers (date, type, amount_usd, note) "
+            f"VALUES ('{t['date']}', '{t['type']}', {t['amount_usd']}, '{note}');"
+        )
+    
+    sql_lines.append("")
+    sql_lines.append("-- Prices")
+    for p in data['prices']:
+        source = p['source'].replace("'", "''") if p['source'] else ''
+        sql_lines.append(
+            f"INSERT INTO price_history (date, symbol, price_usd, source) "
+            f"VALUES ('{p['date']}', '{p['symbol']}', {p['price_usd']}, '{source}');"
+        )
+    
+    return "\n".join(sql_lines)
+
+
+async def backup_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    /backup - 备份所有数据
+    """
+    if not await check_auth(update):
+        return
+    
+    msg = await update.message.reply_text("⏳ 正在导出数据...")
+    
+    try:
+        data = export_all_data()
+        
+        if not data:
+            await msg.edit_text("❌ 数据库连接失败")
+            return
+        
+        summary = data['summary']
+        
+        # 生成 JSON 文件
+        json_content = json.dumps(data, ensure_ascii=False, indent=2)
+        json_file = io.BytesIO(json_content.encode('utf-8'))
+        json_file.name = f"myledger_backup_{date.today()}.json"
+        
+        # 生成 SQL 文件
+        sql_content = generate_restore_sql(data)
+        sql_file = io.BytesIO(sql_content.encode('utf-8'))
+        sql_file.name = f"myledger_restore_{date.today()}.sql"
+        
+        await msg.edit_text(
+            f"✅ *数据导出完成*\n\n"
+            f"📊 *统计*\n"
+            f"• 快照记录: `{summary['total_snapshots']}` 条\n"
+            f"• 转账记录: `{summary['total_transfers']}` 条\n"
+            f"• 价格记录: `{summary['total_prices']}` 条\n\n"
+            f"📁 正在发送备份文件...",
+            parse_mode='Markdown'
+        )
+        
+        # 发送 JSON 文件
+        json_file.seek(0)
+        await update.message.reply_document(
+            document=json_file,
+            filename=json_file.name,
+            caption="📦 JSON 备份 (完整数据)"
+        )
+        
+        # 发送 SQL 文件
+        sql_file.seek(0)
+        await update.message.reply_document(
+            document=sql_file,
+            filename=sql_file.name,
+            caption="🔧 SQL 恢复脚本 (可直接执行)"
+        )
+        
+        await update.message.reply_text(
+            "✅ *备份完成！*\n\n"
+            "💡 *恢复方法*:\n"
+            "1. JSON: 使用 /restore 命令\n"
+            "2. SQL: 在数据库中直接执行\n\n"
+            "⚠️ 建议定期备份，保存到安全位置",
+            parse_mode='Markdown'
+        )
+        
+    except Exception as e:
+        logger.error(f"Backup Error: {e}")
+        await msg.edit_text(f"❌ 备份失败: {e}")
+
+
 # ================= /ledger 查看概览 =================
 
 def make_progress_bar(percentage, length=10):
@@ -711,6 +875,7 @@ def register_ledger_handlers(application):
     application.add_handler(CommandHandler("holdings", holdings_command))
     application.add_handler(CommandHandler("snapshot", snapshot_command))
     application.add_handler(CommandHandler("transfer", transfer_command))
+    application.add_handler(CommandHandler("backup", backup_command))
     
     # 回调处理
     application.add_handler(CallbackQueryHandler(snapshot_callback, pattern=r'^snap_'))
