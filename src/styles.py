@@ -105,6 +105,13 @@ def apply_custom_design():
             font-family: 'Outfit', sans-serif;
             line-height: 1.1;
         }
+        .m-subtitle {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #F59E0B;
+            margin-top: 8px;
+            font-family: 'Outfit', sans-serif;
+        }
         .m-delta {
             display: inline-flex;
             align-items: center;
@@ -139,17 +146,17 @@ def metric_card(label, value, delta=None, delta_up=True, is_masked=False, benchm
     """极致优雅的指标卡片，支持隐私模式、基准对比和副标题"""
     val_display = value
     if is_masked:
-        # 如果是隐私模式且不是百分比，则进行遮罩覆盖
         if "%" not in str(value):
             val_display = '<span class="privacy-masked">$ ••••••</span>'
     
-    # 副标题（如 BTC 本位）
+    # 副标题（如 BTC 本位）- 更醒目的样式
     subtitle_html = ""
     if subtitle and not is_masked:
-        subtitle_html = f'<div style="font-size: 0.9rem; color: var(--falcon-muted); margin-top: 6px; font-weight: 500;">≈ {subtitle}</div>'
+        subtitle_html = f'<div class="m-subtitle">🪙 {subtitle}</div>'
     elif subtitle and is_masked:
-        subtitle_html = '<div style="font-size: 0.9rem; color: var(--falcon-muted); margin-top: 6px;">≈ ••••• BTC</div>'
+        subtitle_html = '<div class="m-subtitle">🪙 ••••• BTC</div>'
     
+    # Delta 标签
     d_html = ""
     if delta:
         if isinstance(delta_up, bool):
