@@ -1,12 +1,13 @@
 """
 MyLedger TG Bot 集成模块
 实现通过 Telegram 查看和录入资产数据
+支持交互式点选录入
 """
 import os
 import logging
 from datetime import datetime, date
-from telegram import Update
-from telegram.ext import ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes, CallbackQueryHandler, MessageHandler, filters
 
 # 数据库依赖
 from sqlalchemy import create_engine, desc, func
@@ -14,13 +15,42 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 logger = logging.getLogger(__name__)
 
-# ================= 数据库配置 =================
-# 从环境变量获取数据库 URL (与 Streamlit 共享)
+# ================= 配置 =================
+TG_CHAT_ID_ENV = os.environ.get('TG_CHAT_ID', '').strip()
+ALLOWED_IDS = set()
+if TG_CHAT_ID_ENV:
+    ALLOWED_IDS = set(int(x.strip()) for x in TG_CHAT_ID_ENV.split(',') if x.strip())
+
 LEDGER_DB_URL = os.environ.get('LEDGER_DB_URL', '').strip()
 
-Base = declarative_base()
+# 支持的币种
+SUPPORTED_SYMBOLS = ['USDT', 'BTC', 'ETH']
 
-# ================= 数据模型 (与 src/models.py 保持一致) =================
+# 用户会话状态 (内存存储，适合单用户)
+user_sessions = {}
+
+async def check_auth(update: Update):
+    """检查用户权限"""
+    user_id = update.effective_user.id if update.effective_user else None
+    if user_id in ALLOWED_IDS:
+        return True
+    if update.message:
+        await update.message.reply_text("⛔️ 无权限访问 MyLedger")
+    elif update.callback_query:
+        await update.callback_query.answer("⛔️ 无权限", show_alert=True)
+    return False
+
+async def check_auth_callback(update: Update):
+    """检查 callback 权限"""
+    user_id = update.effective_user.id if update.effective_user else None
+    if user_id in ALLOWED_IDS:
+        return True
+    await update.callback_query.answer("⛔️ 无权限", show_alert=True)
+    return False
+
+
+# ================= 数据库 =================
+Base = declarative_base()
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime
 
 class Snapshot(Base):
@@ -36,7 +66,7 @@ class Transfer(Base):
     __tablename__ = 'transfers'
     id = Column(Integer, primary_key=True)
     date = Column(Date, nullable=False)
-    type = Column(String(20), nullable=False)  # 'deposit' or 'withdrawal'
+    type = Column(String(20), nullable=False)
     amount_usd = Column(Float, nullable=False)
     note = Column(String(500))
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -50,18 +80,13 @@ class PriceHistory(Base):
     source = Column(String(50))
     created_at = Column(DateTime, default=datetime.utcnow)
 
-
-# ================= 数据库连接 =================
 _engine = None
 _Session = None
 
 def get_db_session():
-    """获取数据库会话"""
     global _engine, _Session
-    
     if not LEDGER_DB_URL:
         return None
-        
     if _engine is None:
         try:
             _engine = create_engine(LEDGER_DB_URL)
@@ -69,14 +94,23 @@ def get_db_session():
         except Exception as e:
             logger.error(f"DB Connection Error: {e}")
             return None
-    
     return _Session()
 
+def get_existing_accounts():
+    """获取已有账户列表"""
+    session = get_db_session()
+    if not session:
+        return []
+    try:
+        result = session.query(Snapshot.account_name).distinct().all()
+        return [r[0] for r in result]
+    finally:
+        session.close()
 
-# ================= 数据查询函数 =================
+
+# ================= 数据查询 =================
 
 def get_latest_snapshot_date():
-    """获取最新快照日期"""
     session = get_db_session()
     if not session:
         return None
@@ -87,7 +121,6 @@ def get_latest_snapshot_date():
         session.close()
 
 def get_price(symbol, target_date=None):
-    """获取资产价格"""
     session = get_db_session()
     if not session:
         return 0
@@ -101,21 +134,17 @@ def get_price(symbol, target_date=None):
         session.close()
 
 def calculate_net_worth():
-    """计算最新净值"""
     session = get_db_session()
     if not session:
         return None
-        
     try:
         latest_date = get_latest_snapshot_date()
         if not latest_date:
             return None
-            
         snapshots = session.query(Snapshot).filter(Snapshot.date == latest_date).all()
         
         total_value = 0
         holdings = []
-        
         for s in snapshots:
             price = get_price(s.symbol, latest_date)
             value = s.quantity * price
@@ -128,7 +157,6 @@ def calculate_net_worth():
                 'value': value
             })
         
-        # 按账户汇总
         by_account = {}
         for h in holdings:
             acc = h['account']
@@ -136,7 +164,6 @@ def calculate_net_worth():
                 by_account[acc] = 0
             by_account[acc] += h['value']
         
-        # 按资产汇总
         by_symbol = {}
         for h in holdings:
             sym = h['symbol']
@@ -156,25 +183,17 @@ def calculate_net_worth():
         session.close()
 
 def calculate_pnl():
-    """计算盈亏"""
     session = get_db_session()
     if not session:
         return None
-    
     try:
-        # 计算净投入
         deposits = session.query(func.sum(Transfer.amount_usd)).filter(Transfer.type == 'deposit').scalar() or 0
         withdrawals = session.query(func.sum(Transfer.amount_usd)).filter(Transfer.type == 'withdrawal').scalar() or 0
         net_investment = deposits - withdrawals
-        
-        # 获取当前净值
         nw_data = calculate_net_worth()
         current_nw = nw_data['total'] if nw_data else 0
-        
-        # 计算 PnL
         pnl = current_nw - net_investment
         roi = (pnl / net_investment * 100) if net_investment > 0 else 0
-        
         return {
             'deposits': deposits,
             'withdrawals': withdrawals,
@@ -187,88 +206,119 @@ def calculate_pnl():
         session.close()
 
 
-# ================= Telegram 指令 =================
+# ================= /ledger 查看概览 =================
+
+def make_progress_bar(percentage, length=10):
+    """生成进度条"""
+    filled = int(percentage / 100 * length)
+    empty = length - filled
+    return '▓' * filled + '░' * empty
 
 async def ledger_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    /ledger - 查看资产概览
-    """
-    msg = await update.message.reply_text("⏳ 正在获取 MyLedger 数据...")
+    if not await check_auth(update):
+        return
+    msg = await update.message.reply_text("⏳ 正在获取数据...")
     
     try:
         nw_data = calculate_net_worth()
         pnl_data = calculate_pnl()
         
         if not nw_data:
-            await msg.edit_text("❌ 暂无数据，请先在 Web 端录入快照")
+            await msg.edit_text("❌ 暂无数据，请先录入快照\n\n使用 /snapshot 开始录入")
             return
         
-        # 格式化输出
         total = nw_data['total']
         pnl = pnl_data['pnl'] if pnl_data else 0
         roi = pnl_data['roi'] if pnl_data else 0
         
-        pnl_icon = "📈" if pnl >= 0 else "📉"
-        pnl_color = "+" if pnl >= 0 else ""
+        # 盈亏状态
+        if pnl > 0:
+            pnl_icon = "🟢"
+            pnl_status = "盈利"
+        elif pnl < 0:
+            pnl_icon = "🔴"
+            pnl_status = "亏损"
+        else:
+            pnl_icon = "⚪"
+            pnl_status = "持平"
         
-        # 账户明细
+        pnl_sign = "+" if pnl >= 0 else ""
+        
+        # 账户分布（美化版）
         account_lines = []
-        for acc, val in sorted(nw_data['by_account'].items(), key=lambda x: -x[1]):
-            pct = (val / total * 100) if total > 0 else 0
-            account_lines.append(f"• {acc}: `${val:,.0f}` ({pct:.1f}%)")
+        sorted_accounts = sorted(nw_data['by_account'].items(), key=lambda x: -x[1])
         
-        accounts_text = "\n".join(account_lines[:5])  # 最多显示5个
-        if len(account_lines) > 5:
-            accounts_text += f"\n• ... 还有 {len(account_lines)-5} 个账户"
+        for i, (acc, val) in enumerate(sorted_accounts[:5]):
+            pct = (val / total * 100) if total > 0 else 0
+            bar = make_progress_bar(pct, 8)
+            
+            # 添加排名图标
+            if i == 0:
+                rank = "🥇"
+            elif i == 1:
+                rank = "🥈"
+            elif i == 2:
+                rank = "🥉"
+            else:
+                rank = "  "
+            
+            account_lines.append(f"{rank} `{acc}`\n     {bar} `${val:,.0f}` ({pct:.1f}%)")
+        
+        # 如果还有更多账户
+        remaining = len(sorted_accounts) - 5
+        if remaining > 0:
+            account_lines.append(f"\n     📦 还有 {remaining} 个账户...")
+        
+        accounts_text = "\n".join(account_lines)
         
         report = (
-            f"💰 **MyLedger 资产概览**\n"
-            f"══════════════════\n"
-            f"📅 数据日期: `{nw_data['date']}`\n"
-            f"──────────────────\n"
-            f"💵 **总净值**: `${total:,.0f}`\n"
-            f"{pnl_icon} **盈亏**: `{pnl_color}${pnl:,.0f}` ({pnl_color}{roi:.1f}%)\n"
-            f"──────────────────\n"
-            f"🏦 **账户分布**\n"
+            f"💰 *MyLedger 资产概览*\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"\n"
+            f"📅 *数据日期*: `{nw_data['date']}`\n"
+            f"\n"
+            f"💵 *总净值*\n"
+            f"   `$ {total:,.0f}`\n"
+            f"\n"
+            f"{pnl_icon} *{pnl_status}*: `{pnl_sign}${abs(pnl):,.0f}` ({pnl_sign}{roi:.1f}%)\n"
+            f"\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"🏦 *账户分布*\n"
+            f"\n"
             f"{accounts_text}\n"
-            f"──────────────────\n"
-            f"💡 使用 /holdings 查看详细持仓"
+            f"\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"📋 /holdings · 📸 /snapshot"
         )
         
         await msg.edit_text(report, parse_mode='Markdown')
-        
     except Exception as e:
         logger.error(f"Ledger Error: {e}")
-        await msg.edit_text(f"❌ 获取数据失败: {e}")
+        await msg.edit_text(f"❌ 获取失败: {e}")
 
+
+# ================= /holdings 持仓明细 =================
 
 async def holdings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    /holdings - 查看持仓明细
-    """
+    if not await check_auth(update):
+        return
     msg = await update.message.reply_text("⏳ 正在获取持仓明细...")
     
     try:
         nw_data = calculate_net_worth()
-        
         if not nw_data:
             await msg.edit_text("❌ 暂无数据")
             return
         
-        # 按资产汇总
         lines = []
         for sym, data in sorted(nw_data['by_symbol'].items(), key=lambda x: -x[1]['value']):
             qty = data['quantity']
             val = data['value']
             pct = (val / nw_data['total'] * 100) if nw_data['total'] > 0 else 0
-            
-            # 根据资产类型选择图标
             icon = "🪙" if sym in ['BTC', 'ETH'] else "💵" if sym == 'USDT' else "📊"
             lines.append(f"{icon} **{sym}**: `{qty:,.4f}` → `${val:,.0f}` ({pct:.1f}%)")
         
         holdings_text = "\n".join(lines[:10])
-        if len(lines) > 10:
-            holdings_text += f"\n... 还有 {len(lines)-10} 个资产"
         
         report = (
             f"📋 **持仓明细**\n"
@@ -281,154 +331,373 @@ async def holdings_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
         await msg.edit_text(report, parse_mode='Markdown')
-        
     except Exception as e:
         logger.error(f"Holdings Error: {e}")
         await msg.edit_text(f"❌ 获取失败: {e}")
 
 
+# ================= /snapshot 交互式录入 =================
+
 async def snapshot_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    /snapshot <账户> <资产1> <数量1> [资产2] [数量2] ...
-    例如: /snapshot Binance BTC 0.5 USDT 10000
-    """
-    args = context.args
+    """开始交互式快照录入"""
+    if not await check_auth(update):
+        return
     
-    if len(args) < 3 or len(args) % 2 == 0:
-        await update.message.reply_text(
-            "📸 **快照录入**\n\n"
-            "用法: `/snapshot <账户> <资产> <数量> [资产2] [数量2] ...`\n\n"
-            "示例:\n"
-            "• `/snapshot Binance BTC 0.5`\n"
-            "• `/snapshot OKX BTC 1.2 USDT 5000 ETH 10`",
+    user_id = update.effective_user.id
+    
+    # 获取已有账户
+    accounts = get_existing_accounts()
+    
+    # 构建键盘
+    keyboard = []
+    
+    # 已有账户按钮
+    for acc in accounts[:6]:  # 最多显示6个
+        keyboard.append([InlineKeyboardButton(f"🏦 {acc}", callback_data=f"snap_acc:{acc}")])
+    
+    # 新建账户按钮
+    keyboard.append([InlineKeyboardButton("➕ 新建账户", callback_data="snap_new_acc")])
+    keyboard.append([InlineKeyboardButton("❌ 取消", callback_data="snap_cancel")])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        "📸 **快照录入 (Step 1/3)**\n\n"
+        "请选择账户：",
+        reply_markup=reply_markup,
+        parse_mode='Markdown'
+    )
+
+
+async def snapshot_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理快照录入的回调"""
+    query = update.callback_query
+    await query.answer()
+    
+    if not await check_auth_callback(update):
+        return
+    
+    user_id = update.effective_user.id
+    data = query.data
+    
+    # 取消操作
+    if data == "snap_cancel":
+        user_sessions.pop(user_id, None)
+        await query.edit_message_text("❌ 已取消录入")
+        return
+    
+    # 选择已有账户
+    if data.startswith("snap_acc:"):
+        account = data.split(":", 1)[1]
+        user_sessions[user_id] = {'account': account, 'step': 'symbol'}
+        
+        # 显示币种选择
+        keyboard = [
+            [
+                InlineKeyboardButton("💵 USDT", callback_data="snap_sym:USDT"),
+                InlineKeyboardButton("🪙 BTC", callback_data="snap_sym:BTC"),
+                InlineKeyboardButton("🔷 ETH", callback_data="snap_sym:ETH"),
+            ],
+            [InlineKeyboardButton("❌ 取消", callback_data="snap_cancel")]
+        ]
+        
+        await query.edit_message_text(
+            f"📸 **快照录入 (Step 2/3)**\n\n"
+            f"🏦 账户: `{account}`\n\n"
+            f"请选择币种：",
+            reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='Markdown'
         )
         return
     
-    account = args[0]
-    pairs = []
-    for i in range(1, len(args), 2):
-        symbol = args[i].upper()
-        try:
-            quantity = float(args[i+1])
-            pairs.append((symbol, quantity))
-        except ValueError:
-            await update.message.reply_text(f"❌ 数量格式错误: {args[i+1]}")
-            return
-    
-    session = get_db_session()
-    if not session:
-        await update.message.reply_text("❌ 数据库连接失败，请检查 LEDGER_DB_URL")
+    # 新建账户
+    if data == "snap_new_acc":
+        user_sessions[user_id] = {'step': 'new_account'}
+        await query.edit_message_text(
+            "📸 **快照录入 - 新建账户**\n\n"
+            "请直接输入账户名称：\n"
+            "（例如：Binance, OKX, Bitget）",
+            parse_mode='Markdown'
+        )
         return
     
-    try:
-        today = date.today()
+    # 选择币种
+    if data.startswith("snap_sym:"):
+        symbol = data.split(":", 1)[1]
+        session = user_sessions.get(user_id, {})
+        session['symbol'] = symbol
+        session['step'] = 'quantity'
+        user_sessions[user_id] = session
         
-        # 删除今天该账户的旧记录
-        session.query(Snapshot).filter(
-            Snapshot.date == today,
-            Snapshot.account_name == account
-        ).delete()
+        await query.edit_message_text(
+            f"📸 **快照录入 (Step 3/3)**\n\n"
+            f"🏦 账户: `{session['account']}`\n"
+            f"💰 币种: `{symbol}`\n\n"
+            f"请输入数量：\n"
+            f"（直接发送数字，如：0.5 或 10000）",
+            parse_mode='Markdown'
+        )
+        return
+
+
+async def handle_text_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理用户文本输入（用于快照录入流程）"""
+    user_id = update.effective_user.id
+    session = user_sessions.get(user_id)
+    
+    if not session:
+        return  # 不在录入流程中，忽略
+    
+    text = update.message.text.strip()
+    step = session.get('step')
+    
+    # 新建账户 - 输入账户名
+    if step == 'new_account':
+        account = text
+        user_sessions[user_id] = {'account': account, 'step': 'symbol'}
         
-        # 插入新记录
-        for symbol, quantity in pairs:
+        keyboard = [
+            [
+                InlineKeyboardButton("💵 USDT", callback_data="snap_sym:USDT"),
+                InlineKeyboardButton("🪙 BTC", callback_data="snap_sym:BTC"),
+                InlineKeyboardButton("🔷 ETH", callback_data="snap_sym:ETH"),
+            ],
+            [InlineKeyboardButton("❌ 取消", callback_data="snap_cancel")]
+        ]
+        
+        await update.message.reply_text(
+            f"📸 **快照录入 (Step 2/3)**\n\n"
+            f"🏦 账户: `{account}` ✅\n\n"
+            f"请选择币种：",
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode='Markdown'
+        )
+        return
+    
+    # 输入数量
+    if step == 'quantity':
+        try:
+            quantity = float(text.replace(',', ''))
+        except ValueError:
+            await update.message.reply_text("❌ 数量格式错误，请输入数字")
+            return
+        
+        account = session['account']
+        symbol = session['symbol']
+        
+        # 保存到数据库
+        db_session = get_db_session()
+        if not db_session:
+            await update.message.reply_text("❌ 数据库连接失败")
+            user_sessions.pop(user_id, None)
+            return
+        
+        try:
+            today = date.today()
+            
+            # 删除今天该账户该币种的旧记录
+            db_session.query(Snapshot).filter(
+                Snapshot.date == today,
+                Snapshot.account_name == account,
+                Snapshot.symbol == symbol
+            ).delete()
+            
+            # 插入新记录
             snapshot = Snapshot(
                 date=today,
                 account_name=account,
                 symbol=symbol,
                 quantity=quantity
             )
-            session.add(snapshot)
+            db_session.add(snapshot)
+            db_session.commit()
+            
+            # 清理会话
+            user_sessions.pop(user_id, None)
+            
+            # 构建继续录入按钮
+            keyboard = [
+                [InlineKeyboardButton("➕ 继续录入同账户", callback_data=f"snap_acc:{account}")],
+                [InlineKeyboardButton("🏦 换个账户", callback_data="snap_restart")],
+                [InlineKeyboardButton("✅ 完成", callback_data="snap_done")]
+            ]
+            
+            await update.message.reply_text(
+                f"✅ **快照已保存！**\n\n"
+                f"📅 日期: `{today}`\n"
+                f"🏦 账户: `{account}`\n"
+                f"💰 币种: `{symbol}`\n"
+                f"📊 数量: `{quantity:,.4f}`\n\n"
+                f"还要继续录入吗？",
+                reply_markup=InlineKeyboardMarkup(keyboard),
+                parse_mode='Markdown'
+            )
+            
+        except Exception as e:
+            db_session.rollback()
+            logger.error(f"Snapshot Save Error: {e}")
+            await update.message.reply_text(f"❌ 保存失败: {e}")
+            user_sessions.pop(user_id, None)
+        finally:
+            db_session.close()
+
+
+async def snapshot_done_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """完成录入"""
+    query = update.callback_query
+    await query.answer()
+    
+    if query.data == "snap_done":
+        await query.edit_message_text("✅ 录入完成！使用 /ledger 查看资产概览")
+    elif query.data == "snap_restart":
+        # 重新开始
+        accounts = get_existing_accounts()
+        keyboard = []
+        for acc in accounts[:6]:
+            keyboard.append([InlineKeyboardButton(f"🏦 {acc}", callback_data=f"snap_acc:{acc}")])
+        keyboard.append([InlineKeyboardButton("➕ 新建账户", callback_data="snap_new_acc")])
+        keyboard.append([InlineKeyboardButton("❌ 取消", callback_data="snap_cancel")])
         
-        session.commit()
-        
-        # 格式化确认信息
-        items = "\n".join([f"• {sym}: `{qty:,.4f}`" for sym, qty in pairs])
-        await update.message.reply_text(
-            f"✅ **快照已保存**\n\n"
-            f"📅 日期: `{today}`\n"
-            f"🏦 账户: `{account}`\n"
-            f"──────────────────\n"
-            f"{items}",
+        await query.edit_message_text(
+            "📸 **快照录入 (Step 1/3)**\n\n"
+            "请选择账户：",
+            reply_markup=InlineKeyboardMarkup(keyboard),
             parse_mode='Markdown'
         )
-        
-    except Exception as e:
-        session.rollback()
-        logger.error(f"Snapshot Error: {e}")
-        await update.message.reply_text(f"❌ 保存失败: {e}")
-    finally:
-        session.close()
 
+
+# ================= /transfer 转账录入 =================
 
 async def transfer_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    /transfer <类型> <金额> [备注]
-    类型: deposit (入金) / withdrawal (出金)
-    例如: /transfer deposit 5000 工资
-    """
-    args = context.args
+    """交互式转账录入"""
+    if not await check_auth(update):
+        return
     
-    if len(args) < 2:
-        await update.message.reply_text(
-            "💸 **转账录入**\n\n"
-            "用法: `/transfer <类型> <金额> [备注]`\n\n"
-            "类型:\n"
-            "• `deposit` - 入金\n"
-            "• `withdrawal` - 出金\n\n"
-            "示例:\n"
-            "• `/transfer deposit 5000 工资`\n"
-            "• `/transfer withdrawal 1000 提现`",
+    user_id = update.effective_user.id
+    
+    keyboard = [
+        [
+            InlineKeyboardButton("📥 入金 (Deposit)", callback_data="trans_type:deposit"),
+            InlineKeyboardButton("📤 出金 (Withdrawal)", callback_data="trans_type:withdrawal"),
+        ],
+        [InlineKeyboardButton("❌ 取消", callback_data="trans_cancel")]
+    ]
+    
+    await update.message.reply_text(
+        "💸 **转账录入**\n\n"
+        "请选择类型：",
+        reply_markup=InlineKeyboardMarkup(keyboard),
+        parse_mode='Markdown'
+    )
+
+
+async def transfer_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理转账回调"""
+    query = update.callback_query
+    await query.answer()
+    
+    if not await check_auth_callback(update):
+        return
+    
+    user_id = update.effective_user.id
+    data = query.data
+    
+    if data == "trans_cancel":
+        user_sessions.pop(user_id, None)
+        await query.edit_message_text("❌ 已取消")
+        return
+    
+    if data.startswith("trans_type:"):
+        trans_type = data.split(":", 1)[1]
+        user_sessions[user_id] = {'trans_type': trans_type, 'step': 'amount'}
+        
+        type_text = "入金" if trans_type == 'deposit' else "出金"
+        await query.edit_message_text(
+            f"💸 **转账录入 - {type_text}**\n\n"
+            f"请输入金额 (USD)：\n"
+            f"（直接发送数字，如：5000）",
             parse_mode='Markdown'
         )
+
+
+async def handle_transfer_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """处理转账金额输入"""
+    user_id = update.effective_user.id
+    session = user_sessions.get(user_id)
+    
+    if not session or 'trans_type' not in session:
         return
     
-    transfer_type = args[0].lower()
-    if transfer_type not in ['deposit', 'withdrawal']:
-        await update.message.reply_text("❌ 类型必须是 deposit 或 withdrawal")
+    if session.get('step') != 'amount':
         return
+    
+    text = update.message.text.strip()
     
     try:
-        amount = float(args[1])
+        amount = float(text.replace(',', ''))
     except ValueError:
-        await update.message.reply_text("❌ 金额格式错误")
+        await update.message.reply_text("❌ 金额格式错误，请输入数字")
         return
     
-    note = " ".join(args[2:]) if len(args) > 2 else None
+    trans_type = session['trans_type']
     
-    session = get_db_session()
-    if not session:
+    db_session = get_db_session()
+    if not db_session:
         await update.message.reply_text("❌ 数据库连接失败")
+        user_sessions.pop(user_id, None)
         return
     
     try:
         transfer = Transfer(
             date=date.today(),
-            type=transfer_type,
+            type=trans_type,
             amount_usd=amount,
-            note=note
+            note=None
         )
-        session.add(transfer)
-        session.commit()
+        db_session.add(transfer)
+        db_session.commit()
         
-        type_icon = "📥" if transfer_type == 'deposit' else "📤"
-        type_text = "入金" if transfer_type == 'deposit' else "出金"
-        note_text = f"\n📝 备注: {note}" if note else ""
+        user_sessions.pop(user_id, None)
+        
+        type_icon = "📥" if trans_type == 'deposit' else "📤"
+        type_text = "入金" if trans_type == 'deposit' else "出金"
         
         await update.message.reply_text(
-            f"✅ **转账已记录**\n\n"
+            f"✅ **转账已记录！**\n\n"
             f"{type_icon} 类型: {type_text}\n"
-            f"💵 金额: `${amount:,.0f}`"
-            f"{note_text}",
+            f"💵 金额: `${amount:,.0f}`\n"
+            f"📅 日期: `{date.today()}`",
             parse_mode='Markdown'
         )
         
     except Exception as e:
-        session.rollback()
+        db_session.rollback()
         logger.error(f"Transfer Error: {e}")
         await update.message.reply_text(f"❌ 保存失败: {e}")
+        user_sessions.pop(user_id, None)
     finally:
-        session.close()
+        db_session.close()
+
+
+# ================= 通用文本处理 =================
+
+async def handle_all_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """统一处理文本输入"""
+    user_id = update.effective_user.id
+    session = user_sessions.get(user_id)
+    
+    if not session:
+        return  # 不在任何流程中
+    
+    # 快照流程
+    if 'account' in session or session.get('step') == 'new_account':
+        await handle_text_input(update, context)
+        return
+    
+    # 转账流程
+    if 'trans_type' in session:
+        await handle_transfer_input(update, context)
+        return
 
 
 # ================= 注册指令 =================
@@ -437,9 +706,18 @@ def register_ledger_handlers(application):
     """注册 MyLedger 相关指令到 TG Bot"""
     from telegram.ext import CommandHandler
     
+    # 命令
     application.add_handler(CommandHandler("ledger", ledger_command))
     application.add_handler(CommandHandler("holdings", holdings_command))
     application.add_handler(CommandHandler("snapshot", snapshot_command))
     application.add_handler(CommandHandler("transfer", transfer_command))
+    
+    # 回调处理
+    application.add_handler(CallbackQueryHandler(snapshot_callback, pattern=r'^snap_'))
+    application.add_handler(CallbackQueryHandler(snapshot_done_callback, pattern=r'^snap_(done|restart)$'))
+    application.add_handler(CallbackQueryHandler(transfer_callback, pattern=r'^trans_'))
+    
+    # 文本输入处理 (放在最后，优先级最低)
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_all_text))
     
     logger.info("✅ MyLedger commands registered")
