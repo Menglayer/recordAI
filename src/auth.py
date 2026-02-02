@@ -10,9 +10,11 @@ def check_password():
 
     def password_entered():
         """Checks whether a password entered by the user is correct."""
-        if st.session_state["password"] == st.secrets.get("PASSWORD", "admin123"):
+        entered_password = st.session_state.get("password", "")
+        if entered_password == st.secrets.get("PASSWORD", "admin123"):
             st.session_state["password_correct"] = True
-            del st.session_state["password"]
+            if "password" in st.session_state:
+                del st.session_state["password"]
         else:
             st.session_state["password_correct"] = False
 
