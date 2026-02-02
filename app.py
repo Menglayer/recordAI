@@ -30,7 +30,7 @@ from pages.dashboard import show_dashboard
 from pages.data_entry import show_data_entry_page
 from pages.data_view import show_data_view_page
 from pages.price import show_price_page
-from pages.tips import show_tips_page
+
 
 
 # Page config
@@ -156,7 +156,7 @@ def main():
         # Navigation
         page = st.radio(
             L.SIDEBAR_NAVIGATION,
-            [L.NAV_DASHBOARD, L.NAV_ENTRY, L.NAV_PRICES, L.NAV_DATA, L.NAV_TIPS],
+            [L.NAV_DASHBOARD, L.NAV_ENTRY, L.NAV_PRICES, L.NAV_DATA],
             label_visibility="collapsed"
         )
     
@@ -198,8 +198,7 @@ def main():
             get_recent_snapshots=get_recent_snapshots,
             get_recent_transfers=get_recent_transfers
         )
-    elif page == L.NAV_TIPS:
-        show_tips_page()
+
 
 
 # Entry Point
