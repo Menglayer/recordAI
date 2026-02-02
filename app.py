@@ -3,9 +3,8 @@ MyLedger - Personal Asset Tracking Tool
 Main entry point with modular architecture
 """
 import streamlit as st
-import pandas as pd
-from datetime import date
 import os
+
 
 from src.models import Base, get_engine
 from src import lang as L
@@ -30,7 +29,6 @@ from pages.dashboard import show_dashboard
 from pages.data_entry import show_data_entry_page
 from pages.data_view import show_data_view_page
 from pages.price import show_price_page
-
 
 
 # Page config
