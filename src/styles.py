@@ -135,13 +135,20 @@ def apply_custom_design():
     </style>
     """, unsafe_allow_html=True)
 
-def metric_card(label, value, delta=None, delta_up=True, is_masked=False, benchmark=None):
-    """极致优雅的指标卡片，支持隐私模式和基准对比"""
+def metric_card(label, value, delta=None, delta_up=True, is_masked=False, benchmark=None, subtitle=None):
+    """极致优雅的指标卡片，支持隐私模式、基准对比和副标题"""
     val_display = value
     if is_masked:
         # 如果是隐私模式且不是百分比，则进行遮罩覆盖
         if "%" not in str(value):
             val_display = '<span class="privacy-masked">$ ••••••</span>'
+    
+    # 副标题（如 BTC 本位）
+    subtitle_html = ""
+    if subtitle and not is_masked:
+        subtitle_html = f'<div style="font-size: 0.9rem; color: var(--falcon-muted); margin-top: 6px; font-weight: 500;">≈ {subtitle}</div>'
+    elif subtitle and is_masked:
+        subtitle_html = '<div style="font-size: 0.9rem; color: var(--falcon-muted); margin-top: 6px;">≈ ••••• BTC</div>'
     
     d_html = ""
     if delta:
@@ -162,6 +169,7 @@ def metric_card(label, value, delta=None, delta_up=True, is_masked=False, benchm
     <div class="u-card">
         <div class="m-label">{label}</div>
         <div class="m-value">{val_display}</div>
+        {subtitle_html}
         {d_html}
     </div>
     """, unsafe_allow_html=True)

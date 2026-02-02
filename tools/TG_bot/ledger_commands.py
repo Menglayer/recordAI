@@ -435,6 +435,10 @@ async def ledger_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         accounts_text = "\n".join(account_lines)
         
+        # 获取 BTC 价格计算币本位
+        btc_price = get_price('BTC') or 100000  # 默认价格
+        btc_equivalent = total / btc_price if btc_price > 0 else 0
+        
         report = (
             f"💰 *MyLedger 资产概览*\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
@@ -443,6 +447,7 @@ async def ledger_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"\n"
             f"💵 *总净值*\n"
             f"   `$ {total:,.0f}`\n"
+            f"   ≈ `{btc_equivalent:.4f} BTC`\n"
             f"\n"
             f"{pnl_icon} *{pnl_status}*: `{pnl_sign}${abs(pnl):,.0f}` ({pnl_sign}{roi:.1f}%)\n"
             f"\n"

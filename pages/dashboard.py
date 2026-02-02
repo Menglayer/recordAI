@@ -66,11 +66,27 @@ def show_dashboard(
         </div>
     """, unsafe_allow_html=True)
     
-    # Net Worth prominently
+    # Net Worth prominently with BTC equivalent
+    # Get BTC price for conversion
+    from src.models import PriceHistory, get_session
+    btc_price = 100000  # Default
+    session = get_session(engine)
+    try:
+        btc_record = session.query(PriceHistory).filter(
+            PriceHistory.symbol == 'BTC'
+        ).order_by(PriceHistory.date.desc()).first()
+        if btc_record:
+            btc_price = btc_record.price_usd
+    finally:
+        session.close()
+    
+    btc_equivalent = net_worth_data['total_net_worth'] / btc_price if btc_price > 0 else 0
+    
     S.metric_card(
         label=L.DASH_NET_WORTH,
         value=format_val(net_worth_data['total_net_worth'], fx_rate, cur_sym, privacy_on),
-        is_masked=privacy_on
+        is_masked=privacy_on,
+        subtitle=f"{btc_equivalent:.4f} BTC"
     )
     
     # Goal Progress Bar - Premium Design
