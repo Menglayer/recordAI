@@ -168,14 +168,7 @@ def metric_card(label, value, delta=None, delta_up=True, is_masked=False, benchm
         
         d_html = f'<div class="m-delta {clz}"><span>{icon}</span> <span>{delta}</span>{bench_html}</div>'
     
-    # Build final HTML
-    html = f"""
-    <div class="u-card">
-        <div class="m-label">{label}</div>
-        <div class="m-value">{val_display}</div>
-        {subtitle_html}
-        {d_html}
-    </div>
-    """
+    # Build final HTML - NO INDENTATION to avoid Markdown code block parsing
+    html = f"""<div class="u-card"><div class="m-label">{label}</div><div class="m-value">{val_display}</div>{subtitle_html}{d_html}</div>"""
     
     st.markdown(html, unsafe_allow_html=True)
