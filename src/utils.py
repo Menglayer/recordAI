@@ -2,21 +2,21 @@
 Utility functions and helpers
 """
 import streamlit as st
+from src import price_service
 
 
+@st.cache_data(ttl=3600)
 def get_fx_rate(to_currency):
     """Get exchange rate from USD to target currency"""
     if to_currency == "USD":
-        return 1.0
+        return 1.0, "$"
     
-    rates = {
-        "CNY": 7.25,
-        "EUR": 0.92,
-        "GBP": 0.79,
-        "JPY": 148.5,
-        "HKD": 7.82
-    }
-    return rates.get(to_currency, 1.0)
+    symbols = {"CNY": "¥", "EUR": "€", "JPY": "¥", "GBP": "£", "HKD": "HK$", "AUD": "A$"}
+    symbol = symbols.get(to_currency, to_currency + " ")
+    
+    service = price_service.PriceService()
+    rate = service.fetch_fx_rate(to_currency)
+    return rate, symbol
 
 
 def format_val(val, rate, symbol, privacy_on=False):

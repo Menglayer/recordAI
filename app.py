@@ -22,7 +22,7 @@ from src.calculations import (
     get_net_worth_history, get_benchmark_history, get_benchmark_roi
 )
 from src.auth import check_password
-from src import price_service
+from src.utils import get_fx_rate, format_val, clear_data_cache
 
 # Import pages
 from pages.dashboard import show_dashboard
@@ -50,32 +50,6 @@ def init_connection():
 
 
 engine = init_connection()
-
-
-# Currency Helper
-@st.cache_data(ttl=3600)
-def get_fx_rate(to_currency):
-    if to_currency == "USD":
-        return 1.0, "$"
-    
-    symbols = {"CNY": "¥", "EUR": "€", "JPY": "¥", "GBP": "£", "HKD": "HK$", "AUD": "A$"}
-    symbol = symbols.get(to_currency, to_currency + " ")
-    
-    service = price_service.PriceService()
-    rate = service.fetch_fx_rate(to_currency)
-    return rate, symbol
-
-
-def format_val(val, rate, symbol, privacy_on=False):
-    if privacy_on:
-        return "••••••"
-    return f"{symbol}{val * rate:,.2f}"
-
-
-# Cache Management
-def clear_data_cache():
-    """Clear all cached calculations after data changes"""
-    st.cache_data.clear()
 
 
 # Sidebar Stats Cache
