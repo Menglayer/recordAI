@@ -67,18 +67,9 @@ def show_dashboard(
     """, unsafe_allow_html=True)
     
     # Net Worth prominently with BTC equivalent
-    # Get BTC price for conversion
-    from src.models import PriceHistory, get_session
-    btc_price = 100000  # Default
-    session = get_session(engine)
-    try:
-        btc_record = session.query(PriceHistory).filter(
-            PriceHistory.symbol == 'BTC'
-        ).order_by(PriceHistory.date.desc()).first()
-        if btc_record:
-            btc_price = btc_record.price_usd
-    finally:
-        session.close()
+    # Get realtime BTC price for conversion
+    from src.utils import get_realtime_btc_price
+    btc_price = get_realtime_btc_price()
     
     btc_equivalent = net_worth_data['total_net_worth'] / btc_price if btc_price > 0 else 0
     

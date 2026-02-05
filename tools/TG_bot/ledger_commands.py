@@ -108,6 +108,61 @@ def get_existing_accounts():
         session.close()
 
 
+# ================= 实时BTC价格 =================
+
+import time
+_btc_price_cache = {'price': None, 'timestamp': 0}
+_BTC_CACHE_TTL = 300  # 5分钟缓存
+
+def get_realtime_btc_price():
+    """
+    实时获取BTC价格（带内存缓存）
+    
+    Returns:
+        float: BTC价格（USD）
+    """
+    global _btc_price_cache
+    
+    # 检查缓存
+    now = time.time()
+    if _btc_price_cache['price'] and (now - _btc_price_cache['timestamp'] < _BTC_CACHE_TTL):
+        return _btc_price_cache['price']
+    
+    # 1. 尝试从 Binance 获取实时价格
+    try:
+        import ccxt
+        binance = ccxt.binance()
+        ticker = binance.fetch_ticker('BTC/USDT')
+        price = float(ticker['last'])
+        if price > 0:
+            _btc_price_cache = {'price': price, 'timestamp': now}
+            logger.info(f"✓ BTC实时价格: ${price:,.2f}")
+            return price
+    except Exception as e:
+        logger.warning(f"Binance API 获取BTC价格失败: {e}")
+    
+    # 2. Fallback: 从数据库获取
+    try:
+        session = get_db_session()
+        if session:
+            try:
+                btc_record = session.query(PriceHistory).filter(
+                    PriceHistory.symbol == 'BTC'
+                ).order_by(desc(PriceHistory.date)).first()
+                
+                if btc_record and btc_record.price_usd > 0:
+                    price = btc_record.price_usd
+                    _btc_price_cache = {'price': price, 'timestamp': now}
+                    return price
+            finally:
+                session.close()
+    except Exception as e:
+        logger.warning(f"数据库获取BTC价格失败: {e}")
+    
+    # 3. 最终 fallback
+    return _btc_price_cache.get('price') or 100000.0
+
+
 # ================= 数据查询 =================
 
 def get_latest_snapshot_date():
@@ -435,8 +490,8 @@ async def ledger_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         accounts_text = "\n".join(account_lines)
         
-        # 获取 BTC 价格计算币本位
-        btc_price = get_price('BTC') or 100000  # 默认价格
+        # 获取 BTC 实时价格计算币本位
+        btc_price = get_realtime_btc_price()
         btc_equivalent = total / btc_price if btc_price > 0 else 0
         
         report = (

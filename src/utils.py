@@ -66,3 +66,50 @@ MODERN_COLORS = [
     '#EC4899',  # Pink
     '#6366F1',  # Indigo
 ]
+
+
+@st.cache_data(ttl=300)  # 缓存5分钟
+def get_realtime_btc_price():
+    """
+    实时获取BTC价格（带缓存）
+    优先从Binance获取，失败则尝试数据库历史价格
+    
+    Returns:
+        float: BTC价格（USD）
+    """
+    import ccxt
+    
+    # 1. 尝试从 Binance 获取实时价格
+    try:
+        binance = ccxt.binance()
+        ticker = binance.fetch_ticker('BTC/USDT')
+        price = float(ticker['last'])
+        if price > 0:
+            return price
+    except Exception as e:
+        print(f"⚠️ Binance API 获取BTC价格失败: {e}")
+    
+    # 2. Fallback: 尝试从数据库获取最新价格
+    try:
+        from src.models import PriceHistory, get_session, get_engine
+        from sqlalchemy import desc
+        import os
+        
+        db_url = os.getenv("DB_URL") or 'local_ledger.db'
+        engine = get_engine(db_url)
+        session = get_session(engine)
+        
+        try:
+            btc_record = session.query(PriceHistory).filter(
+                PriceHistory.symbol == 'BTC'
+            ).order_by(desc(PriceHistory.date)).first()
+            
+            if btc_record and btc_record.price_usd > 0:
+                return btc_record.price_usd
+        finally:
+            session.close()
+    except Exception as e:
+        print(f"⚠️ 数据库获取BTC价格失败: {e}")
+    
+    # 3. 最终 fallback: 返回一个合理的默认值
+    return 100000.0
