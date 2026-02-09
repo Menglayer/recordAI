@@ -774,61 +774,13 @@ def show_dashboard(
             )
             
             st.plotly_chart(fig_heatmap, use_container_width=True, config={'displayModeBar': False})
-            
-            # ========== 月收益柱状图 ==========
-            st.markdown("##### 📊 月度收益趋势")
-            
-            monthly_df_sorted = monthly_df.sort_values(['year', 'month'])
-            monthly_df_sorted['date_label'] = monthly_df_sorted.apply(
-                lambda x: f"{int(x['year'])}/{int(x['month']):02d}", axis=1
-            )
-            
-            bar_colors = ['#10B981' if r >= 0 else '#EF4444' for r in monthly_df_sorted['return']]
-            
-            fig_bar = go.Figure()
-            fig_bar.add_trace(go.Bar(
-                x=monthly_df_sorted['date_label'],
-                y=monthly_df_sorted['return'],
-                marker_color=bar_colors,
-                text=[f"{r:+.1f}%" for r in monthly_df_sorted['return']],
-                textposition='outside',
-                textfont=dict(size=10, family='Outfit'),
-                hovertemplate="<b>%{x}</b><br>收益率: %{y:+.2f}%<extra></extra>"
-            ))
-            
-            fig_bar.update_layout(
-                height=260,
-                margin=dict(l=20, r=20, t=20, b=50),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                xaxis=dict(
-                    tickfont=dict(size=10, color='#6B7280', family='Inter'),
-                    tickangle=-45,
-                    showgrid=False
-                ),
-                yaxis=dict(
-                    ticksuffix="%",
-                    tickfont=dict(size=10, color='#6B7280'),
-                    showgrid=True,
-                    gridcolor='rgba(229, 231, 235, 0.5)',
-                    griddash='dot',
-                    zeroline=True,
-                    zerolinecolor='#9CA3AF',
-                    zerolinewidth=1
-                ),
-                showlegend=False,
-                bargap=0.3
-            )
-            
-            st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
+
             
             # ========== 美化统计卡片 ==========
             positive_months = (monthly_df['return'] > 0).sum()
-            negative_months = (monthly_df['return'] < 0).sum()
             total_months = len(monthly_df)
             avg_return = monthly_df['return'].mean()
             avg_change = monthly_df['change'].mean() * fx_rate
-            total_change = monthly_df['change'].sum() * fx_rate
             best_month = monthly_df.loc[monthly_df['return'].idxmax()]
             worst_month = monthly_df.loc[monthly_df['return'].idxmin()]
             
@@ -843,7 +795,6 @@ def show_dashboard(
             best_change = best_month['change'] * fx_rate
             worst_change = worst_month['change'] * fx_rate
             win_rate = positive_months / total_months * 100 if total_months > 0 else 0
-            total_color = '#10B981' if total_change >= 0 else '#EF4444'
             
             st.markdown(f"""
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 1.5rem 0;">
@@ -868,20 +819,7 @@ def show_dashboard(
                     <div style="font-size: 0.85rem; color: #EF4444; font-weight: 600;">{worst_month['return']:.2f}% ({cur_sym}{format_change(worst_change)})</div>
                 </div>
             </div>
-            
-            <div class="u-card" style="padding: 16px 24px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, #F8FAFC 0%, #F1F5F9 100%);">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <span style="font-size: 1.5rem;">💰</span>
-                    <div>
-                        <div style="font-size: 0.75rem; color: #64748B; text-transform: uppercase;">累计总收益</div>
-                        <div style="font-size: 1.3rem; font-weight: 700; color: {total_color}; font-family: Outfit;">{cur_sym}{format_change(total_change)}</div>
-                    </div>
-                </div>
-                <div style="text-align: right;">
-                    <div style="font-size: 0.75rem; color: #64748B;">统计周期</div>
-                    <div style="font-size: 0.9rem; font-weight: 600; color: #334155;">{total_months} 个月</div>
-                </div>
-            </div>
+
             """, unsafe_allow_html=True)
     else:
         st.info("需要至少2个月的数据才能显示热力图")
