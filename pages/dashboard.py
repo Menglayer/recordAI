@@ -679,6 +679,21 @@ def show_dashboard(
             # 生成年份列表（确保是字符串格式）
             year_labels = [str(int(y)) for y in pivot.index.tolist()]
             
+            # 计算年度汇总
+            yearly_summary = monthly_df.groupby('year').agg({
+                'return': 'sum',
+                'change': 'sum'
+            }).reset_index()
+            
+            # 添加年度汇总列
+            months_with_total = months + ['年度']
+            pivot['年度'] = [yearly_summary[yearly_summary['year'] == int(y)]['return'].values[0] 
+                            if int(y) in yearly_summary['year'].values else None 
+                            for y in year_labels]
+            pivot_change['年度'] = [yearly_summary[yearly_summary['year'] == int(y)]['change'].values[0] 
+                                   if int(y) in yearly_summary['year'].values else None 
+                                   for y in year_labels]
+            
             # 格子内只显示收益率百分比
             text_matrix = [[f"{v:+.1f}%" if pd.notna(v) else "" for v in row] for row in pivot.values]
             
@@ -687,9 +702,9 @@ def show_dashboard(
             for i, row in enumerate(pivot.values):
                 hover_row = []
                 for j, v in enumerate(row):
-                    change_v = pivot_change.values[i][j] if i < len(pivot_change.values) and j < len(pivot_change.values[i]) else None
+                    change_v = pivot_change.values[i][j] if j < len(pivot_change.values[i]) else None
                     year = year_labels[i]
-                    month = months[j]
+                    col_name = months_with_total[j]
                     if pd.notna(v) and pd.notna(change_v):
                         change_display = change_v * fx_rate
                         if abs(change_display) >= 10000:
@@ -698,16 +713,19 @@ def show_dashboard(
                             change_str = f"{change_display:+,.0f}"
                         else:
                             change_str = f"{change_display:+.0f}"
-                        hover_row.append(f"<b>{year}年 {month}</b><br>收益率: {v:+.2f}%<br>收益额: {cur_sym}{change_str}")
+                        if col_name == '年度':
+                            hover_row.append(f"<b>{year}年 全年汇总</b><br>累计收益率: {v:+.2f}%<br>累计收益额: {cur_sym}{change_str}")
+                        else:
+                            hover_row.append(f"<b>{year}年 {col_name}</b><br>收益率: {v:+.2f}%<br>收益额: {cur_sym}{change_str}")
                     elif pd.notna(v):
-                        hover_row.append(f"<b>{year}年 {month}</b><br>收益率: {v:+.2f}%")
+                        hover_row.append(f"<b>{year}年 {col_name}</b><br>收益率: {v:+.2f}%")
                     else:
                         hover_row.append("")
                 hover_matrix.append(hover_row)
             
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=pivot.values,
-                x=months,
+                x=months_with_total,
                 y=year_labels,
                 colorscale=[
                     [0, '#DC2626'],      # 深红 - 大亏
@@ -757,23 +775,114 @@ def show_dashboard(
             
             st.plotly_chart(fig_heatmap, use_container_width=True, config={'displayModeBar': False})
             
-            col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+            # ========== 月收益柱状图 ==========
+            st.markdown("##### 📊 月度收益趋势")
             
+            monthly_df_sorted = monthly_df.sort_values(['year', 'month'])
+            monthly_df_sorted['date_label'] = monthly_df_sorted.apply(
+                lambda x: f"{int(x['year'])}/{int(x['month']):02d}", axis=1
+            )
+            
+            bar_colors = ['#10B981' if r >= 0 else '#EF4444' for r in monthly_df_sorted['return']]
+            
+            fig_bar = go.Figure()
+            fig_bar.add_trace(go.Bar(
+                x=monthly_df_sorted['date_label'],
+                y=monthly_df_sorted['return'],
+                marker_color=bar_colors,
+                text=[f"{r:+.1f}%" for r in monthly_df_sorted['return']],
+                textposition='outside',
+                textfont=dict(size=10, family='Outfit'),
+                hovertemplate="<b>%{x}</b><br>收益率: %{y:+.2f}%<extra></extra>"
+            ))
+            
+            fig_bar.update_layout(
+                height=260,
+                margin=dict(l=20, r=20, t=20, b=50),
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(
+                    tickfont=dict(size=10, color='#6B7280', family='Inter'),
+                    tickangle=-45,
+                    showgrid=False
+                ),
+                yaxis=dict(
+                    ticksuffix="%",
+                    tickfont=dict(size=10, color='#6B7280'),
+                    showgrid=True,
+                    gridcolor='rgba(229, 231, 235, 0.5)',
+                    griddash='dot',
+                    zeroline=True,
+                    zerolinecolor='#9CA3AF',
+                    zerolinewidth=1
+                ),
+                showlegend=False,
+                bargap=0.3
+            )
+            
+            st.plotly_chart(fig_bar, use_container_width=True, config={'displayModeBar': False})
+            
+            # ========== 美化统计卡片 ==========
             positive_months = (monthly_df['return'] > 0).sum()
             negative_months = (monthly_df['return'] < 0).sum()
             total_months = len(monthly_df)
             avg_return = monthly_df['return'].mean()
+            avg_change = monthly_df['change'].mean() * fx_rate
+            total_change = monthly_df['change'].sum() * fx_rate
             best_month = monthly_df.loc[monthly_df['return'].idxmax()]
             worst_month = monthly_df.loc[monthly_df['return'].idxmin()]
             
-            with col_m1:
-                st.metric("平均月收益", f"{avg_return:.2f}%")
-            with col_m2:
-                st.metric("盈利月份", f"{positive_months}/{total_months}", delta=f"{positive_months/total_months*100:.0f}%")
-            with col_m3:
-                st.metric("最佳月份", f"{int(best_month['year'])}/{int(best_month['month']):02d}", delta=f"+{best_month['return']:.2f}%")
-            with col_m4:
-                st.metric("最差月份", f"{int(worst_month['year'])}/{int(worst_month['month']):02d}", delta=f"{worst_month['return']:.2f}%")
+            def format_change(val):
+                if abs(val) >= 10000:
+                    return f"{val/1000:+,.1f}k"
+                elif abs(val) >= 1000:
+                    return f"{val:+,.0f}"
+                else:
+                    return f"{val:+.0f}"
+            
+            best_change = best_month['change'] * fx_rate
+            worst_change = worst_month['change'] * fx_rate
+            win_rate = positive_months / total_months * 100 if total_months > 0 else 0
+            total_color = '#10B981' if total_change >= 0 else '#EF4444'
+            
+            st.markdown(f"""
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 1.5rem 0;">
+                <div class="u-card" style="padding: 20px; text-align: center; background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border: 1px solid #86EFAC;">
+                    <div style="font-size: 0.75rem; color: #15803D; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">平均月收益</div>
+                    <div style="font-size: 1.8rem; font-weight: 800; color: #166534; font-family: Outfit; margin: 8px 0;">{avg_return:+.2f}%</div>
+                    <div style="font-size: 0.8rem; color: #22C55E;">{cur_sym}{format_change(avg_change)}/月</div>
+                </div>
+                <div class="u-card" style="padding: 20px; text-align: center; background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 1px solid #93C5FD;">
+                    <div style="font-size: 0.75rem; color: #1D4ED8; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">盈利月份</div>
+                    <div style="font-size: 1.8rem; font-weight: 800; color: #1E40AF; font-family: Outfit; margin: 8px 0;">{positive_months}/{total_months}</div>
+                    <div style="font-size: 0.8rem; color: #3B82F6;">胜率 {win_rate:.0f}%</div>
+                </div>
+                <div class="u-card" style="padding: 20px; text-align: center; background: linear-gradient(135deg, #F0FDF4 0%, #D1FAE5 100%); border: 1px solid #6EE7B7;">
+                    <div style="font-size: 0.75rem; color: #047857; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">🏆 最佳月份</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #065F46; font-family: Outfit; margin: 8px 0;">{int(best_month['year'])}/{int(best_month['month']):02d}</div>
+                    <div style="font-size: 0.85rem; color: #10B981; font-weight: 600;">+{best_month['return']:.2f}% ({cur_sym}{format_change(best_change)})</div>
+                </div>
+                <div class="u-card" style="padding: 20px; text-align: center; background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); border: 1px solid #FCA5A5;">
+                    <div style="font-size: 0.75rem; color: #B91C1C; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">📉 最差月份</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: #991B1B; font-family: Outfit; margin: 8px 0;">{int(worst_month['year'])}/{int(worst_month['month']):02d}</div>
+                    <div style="font-size: 0.85rem; color: #EF4444; font-weight: 600;">{worst_month['return']:.2f}% ({cur_sym}{format_change(worst_change)})</div>
+                </div>
+            </div>
+            
+            <div class="u-card" style="padding: 16px 24px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(90deg, #F8FAFC 0%, #F1F5F9 100%);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-size: 1.5rem;">💰</span>
+                    <div>
+                        <div style="font-size: 0.75rem; color: #64748B; text-transform: uppercase;">累计总收益</div>
+                        <div style="font-size: 1.3rem; font-weight: 700; color: {total_color}; font-family: Outfit;">{cur_sym}{format_change(total_change)}</div>
+                    </div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 0.75rem; color: #64748B;">统计周期</div>
+                    <div style="font-size: 0.9rem; font-weight: 600; color: #334155;">{total_months} 个月</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
     else:
         st.info("需要至少2个月的数据才能显示热力图")
     
