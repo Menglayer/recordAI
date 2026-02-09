@@ -657,31 +657,75 @@ def show_dashboard(
         for (year, month), group in history_df_temp.groupby(['year', 'month']):
             first_val = group['net_worth'].iloc[0]
             last_val = group['net_worth'].iloc[-1]
-            ret = ((last_val - first_val) / first_val * 100) if first_val > 0 else 0
-            monthly_data.append({'year': year, 'month': month, 'return': ret})
+            change = last_val - first_val  # 具体金额变化
+            ret = ((change) / first_val * 100) if first_val > 0 else 0
+            monthly_data.append({'year': year, 'month': month, 'return': ret, 'change': change})
         
         monthly_df = pd.DataFrame(monthly_data)
         
         if not monthly_df.empty:
             months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
             
+            # 收益率 pivot
             pivot = monthly_df.pivot(index='year', columns='month', values='return')
             pivot = pivot.reindex(columns=range(1, 13), fill_value=None)
             pivot.columns = months
             
+            # 金额变化 pivot
+            pivot_change = monthly_df.pivot(index='year', columns='month', values='change')
+            pivot_change = pivot_change.reindex(columns=range(1, 13), fill_value=None)
+            pivot_change.columns = months
+            
+            # 生成年份列表（确保是字符串格式）
+            year_labels = [str(int(y)) for y in pivot.index.tolist()]
+            
+            # 生成显示文本：同时包含百分比和金额
+            def format_cell(ret_val, change_val):
+                if pd.notna(ret_val) and pd.notna(change_val):
+                    # 格式化金额，根据大小选择单位
+                    change_display = change_val * fx_rate
+                    if abs(change_display) >= 1000:
+                        change_str = f"{change_display/1000:+.1f}k"
+                    else:
+                        change_str = f"{change_display:+.0f}"
+                    return f"{ret_val:.1f}%<br><span style='font-size:9px'>{cur_sym}{change_str}</span>"
+                elif pd.notna(ret_val):
+                    return f"{ret_val:.1f}%"
+                else:
+                    return ""
+            
+            # 简化版本：只显示百分比和金额数值
+            text_matrix = []
+            for i, row in enumerate(pivot.values):
+                text_row = []
+                for j, v in enumerate(row):
+                    change_v = pivot_change.values[i][j] if i < len(pivot_change.values) and j < len(pivot_change.values[i]) else None
+                    if pd.notna(v) and pd.notna(change_v):
+                        change_display = change_v * fx_rate
+                        if abs(change_display) >= 1000:
+                            change_str = f"{change_display/1000:+.1f}k"
+                        else:
+                            change_str = f"{change_display:+.0f}"
+                        text_row.append(f"{v:.1f}%\n{cur_sym}{change_str}")
+                    elif pd.notna(v):
+                        text_row.append(f"{v:.1f}%")
+                    else:
+                        text_row.append("")
+                text_matrix.append(text_row)
+            
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=pivot.values,
                 x=months,
-                y=pivot.index.astype(str),
+                y=year_labels,
                 colorscale=[
                     [0, '#EF4444'],
                     [0.5, '#F9FAFB'],
                     [1, '#10B981']
                 ],
                 zmid=0,
-                text=[[f"{v:.1f}%" if pd.notna(v) else "" for v in row] for row in pivot.values],
+                text=text_matrix,
                 texttemplate="%{text}",
-                textfont={"size": 11, "color": "#1F2937"},
+                textfont={"size": 10, "color": "#1F2937"},
                 hovertemplate="<b>%{y}年 %{x}</b><br>收益率: %{z:.2f}%<extra></extra>",
                 showscale=True,
                 colorbar=dict(
@@ -692,7 +736,7 @@ def show_dashboard(
             ))
             
             fig_heatmap.update_layout(
-                height=180 + len(pivot) * 40,
+                height=180 + len(pivot) * 50,  # 增加高度以适应两行文字
                 margin=dict(l=20, r=80, t=30, b=20),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
@@ -702,7 +746,11 @@ def show_dashboard(
                 ),
                 yaxis=dict(
                     tickfont=dict(size=12, color='#1F2937', family='Outfit'),
-                    autorange='reversed'
+                    autorange='reversed',
+                    type='category',  # 强制使用分类轴，避免年份显示为小数
+                    tickmode='array',
+                    tickvals=year_labels,
+                    ticktext=year_labels
                 )
             )
             
