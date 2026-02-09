@@ -66,9 +66,6 @@ def get_sidebar_stats(_engine):
 # Main Application
 def main():
     """Main application"""
-    # Apply styles
-    S.apply_custom_design()
-
     
     # Check password
     if not check_password():
@@ -88,6 +85,13 @@ def main():
         
         # Privacy toggle
         privacy_on = st.toggle(L.SIDEBAR_PRIVACY, value=False)
+        
+        # Dark mode toggle
+        dark_mode = st.toggle("🌙 深色模式", value=st.session_state.get('dark_mode', False))
+        st.session_state['dark_mode'] = dark_mode
+        
+        # Apply styles with dark mode
+        S.apply_custom_design(dark_mode=dark_mode)
         
         st.markdown("---")
         
@@ -112,9 +116,13 @@ def main():
         try:
             stats = get_sidebar_stats(engine)
             if stats['total_net_worth'] > 0:
+                # 深色模式适配
+                card_bg = 'linear-gradient(135deg, #064E3B 0%, #065F46 100%)' if dark_mode else 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
+                label_color = '#94A3B8' if dark_mode else '#6B7280'
+                
                 st.markdown(f"""
-                <div style='background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); padding: 12px; border-radius: 12px; margin-bottom: 8px;'>
-                    <div style='font-size: 0.75rem; color: #6B7280;'>当前净值</div>
+                <div style='background: {card_bg}; padding: 12px; border-radius: 12px; margin-bottom: 8px;'>
+                    <div style='font-size: 0.75rem; color: {label_color};'>当前净值</div>
                     <div style='font-size: 1.3rem; font-weight: 700; font-family: Outfit; color: #10B981;'>
                         {"••••••" if privacy_on else f"{cur_sym}{stats['total_net_worth'] * fx_rate:,.0f}"}
                     </div>
@@ -142,6 +150,7 @@ def main():
             privacy_on=privacy_on,
             fx_rate=fx_rate,
             cur_sym=cur_sym,
+            dark_mode=dark_mode,
             calculate_current_net_worth=calculate_current_net_worth,
             calculate_transfers_summary=calculate_transfers_summary,
             calculate_pnl=calculate_pnl,

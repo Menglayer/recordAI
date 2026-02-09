@@ -16,6 +16,7 @@ def show_dashboard(
     privacy_on=False,
     fx_rate=1.0,
     cur_sym="$",
+    dark_mode=False,
     calculate_current_net_worth=None,
     calculate_transfers_summary=None,
     calculate_pnl=None,
@@ -26,6 +27,21 @@ def show_dashboard(
     format_val=None
 ):
     """Dashboard page with Benchmarking"""
+    
+    # 深色模式图表主题
+    if dark_mode:
+        chart_bg = 'rgba(0,0,0,0)'
+        chart_paper_bg = 'rgba(0,0,0,0)'
+        chart_font_color = '#E2E8F0'
+        chart_grid_color = 'rgba(148, 163, 184, 0.2)'
+        chart_line_color = '#334155'
+    else:
+        chart_bg = 'rgba(0,0,0,0)'
+        chart_paper_bg = 'rgba(0,0,0,0)'
+        chart_font_color = '#1E293B'
+        chart_grid_color = 'rgba(229, 231, 235, 0.5)'
+        chart_line_color = '#E5E7EB'
+    
     st.markdown("---")
     
     # Loading spinner while calculating data
@@ -586,20 +602,21 @@ def show_dashboard(
             yaxis_title=None,
             height=chart_height,
             margin=dict(l=20, r=20, t=70, b=80 if has_benchmarks else 20),
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
+            paper_bgcolor=chart_paper_bg,
+            plot_bgcolor=chart_bg,
             xaxis=dict(
                 showgrid=False,
-                linecolor='#E5E7EB',
-                tickfont=dict(size=11, color='#6B7280', family='Inter'),
+                linecolor=chart_line_color,
+                tickfont=dict(size=11, color=chart_font_color, family='Inter'),
                 tickformat='%m/%d',
             ),
             hovermode='x unified',
             hoverlabel=dict(
-                bgcolor='white',
+                bgcolor='#1E293B' if dark_mode else 'white',
                 font_size=14,
                 font_family='Inter',
-                bordercolor='#E5E7EB'
+                font_color='#E2E8F0' if dark_mode else '#1E293B',
+                bordercolor=chart_line_color
             ),
             showlegend=has_benchmarks,
             legend=dict(
@@ -608,9 +625,9 @@ def show_dashboard(
                 y=-0.18,
                 xanchor='center',
                 x=0.5,
-                font=dict(size=9, family='Inter'),
-                bgcolor='rgba(255,255,255,0.9)',
-                bordercolor='#E5E7EB',
+                font=dict(size=9, family='Inter', color=chart_font_color),
+                bgcolor='rgba(30, 41, 59, 0.9)' if dark_mode else 'rgba(255,255,255,0.9)',
+                bordercolor=chart_line_color,
                 borderwidth=1
             )
         )
@@ -756,15 +773,15 @@ def show_dashboard(
             fig_heatmap.update_layout(
                 height=120 + len(pivot) * 70,  # 增加单元格高度
                 margin=dict(l=60, r=100, t=50, b=20),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor=chart_paper_bg,
+                plot_bgcolor=chart_bg,
                 xaxis=dict(
                     side='top',
-                    tickfont=dict(size=12, color='#374151', family='Inter'),
+                    tickfont=dict(size=12, color=chart_font_color, family='Inter'),
                     tickangle=0
                 ),
                 yaxis=dict(
-                    tickfont=dict(size=14, color='#1F2937', family='Outfit', weight=600),
+                    tickfont=dict(size=14, color=chart_font_color, family='Outfit'),
                     autorange='reversed',
                     type='category',
                     tickmode='array',
@@ -796,26 +813,46 @@ def show_dashboard(
             worst_change = worst_month['change'] * fx_rate
             win_rate = positive_months / total_months * 100 if total_months > 0 else 0
             
+            # 深色模式卡片样式
+            if dark_mode:
+                card1_style = "background: linear-gradient(135deg, #064E3B 0%, #065F46 100%); border: 1px solid #059669;"
+                card2_style = "background: linear-gradient(135deg, #1E3A5F 0%, #1E40AF 100%); border: 1px solid #3B82F6;"
+                card3_style = "background: linear-gradient(135deg, #064E3B 0%, #047857 100%); border: 1px solid #10B981;"
+                card4_style = "background: linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%); border: 1px solid #EF4444;"
+                label1_color, value1_color = "#86EFAC", "#10B981"
+                label2_color, value2_color = "#93C5FD", "#60A5FA"
+                label3_color, value3_color = "#6EE7B7", "#10B981"
+                label4_color, value4_color = "#FCA5A5", "#F87171"
+            else:
+                card1_style = "background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border: 1px solid #86EFAC;"
+                card2_style = "background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 1px solid #93C5FD;"
+                card3_style = "background: linear-gradient(135deg, #F0FDF4 0%, #D1FAE5 100%); border: 1px solid #6EE7B7;"
+                card4_style = "background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); border: 1px solid #FCA5A5;"
+                label1_color, value1_color = "#15803D", "#166534"
+                label2_color, value2_color = "#1D4ED8", "#1E40AF"
+                label3_color, value3_color = "#047857", "#065F46"
+                label4_color, value4_color = "#B91C1C", "#991B1B"
+            
             st.markdown(f"""
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 1.5rem 0;">
-                <div class="u-card" style="padding: 20px; text-align: center; background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border: 1px solid #86EFAC;">
-                    <div style="font-size: 0.75rem; color: #15803D; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">平均月收益</div>
-                    <div style="font-size: 1.8rem; font-weight: 800; color: #166534; font-family: Outfit; margin: 8px 0;">{avg_return:+.2f}%</div>
+                <div class="u-card" style="padding: 20px; text-align: center; {card1_style}">
+                    <div style="font-size: 0.75rem; color: {label1_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">平均月收益</div>
+                    <div style="font-size: 1.8rem; font-weight: 800; color: {value1_color}; font-family: Outfit; margin: 8px 0;">{avg_return:+.2f}%</div>
                     <div style="font-size: 0.8rem; color: #22C55E;">{cur_sym}{format_change(avg_change)}/月</div>
                 </div>
-                <div class="u-card" style="padding: 20px; text-align: center; background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 1px solid #93C5FD;">
-                    <div style="font-size: 0.75rem; color: #1D4ED8; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">盈利月份</div>
-                    <div style="font-size: 1.8rem; font-weight: 800; color: #1E40AF; font-family: Outfit; margin: 8px 0;">{positive_months}/{total_months}</div>
+                <div class="u-card" style="padding: 20px; text-align: center; {card2_style}">
+                    <div style="font-size: 0.75rem; color: {label2_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">盈利月份</div>
+                    <div style="font-size: 1.8rem; font-weight: 800; color: {value2_color}; font-family: Outfit; margin: 8px 0;">{positive_months}/{total_months}</div>
                     <div style="font-size: 0.8rem; color: #3B82F6;">胜率 {win_rate:.0f}%</div>
                 </div>
-                <div class="u-card" style="padding: 20px; text-align: center; background: linear-gradient(135deg, #F0FDF4 0%, #D1FAE5 100%); border: 1px solid #6EE7B7;">
-                    <div style="font-size: 0.75rem; color: #047857; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">🏆 最佳月份</div>
-                    <div style="font-size: 1.5rem; font-weight: 800; color: #065F46; font-family: Outfit; margin: 8px 0;">{int(best_month['year'])}/{int(best_month['month']):02d}</div>
+                <div class="u-card" style="padding: 20px; text-align: center; {card3_style}">
+                    <div style="font-size: 0.75rem; color: {label3_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">🏆 最佳月份</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: {value3_color}; font-family: Outfit; margin: 8px 0;">{int(best_month['year'])}/{int(best_month['month']):02d}</div>
                     <div style="font-size: 0.85rem; color: #10B981; font-weight: 600;">+{best_month['return']:.2f}% ({cur_sym}{format_change(best_change)})</div>
                 </div>
-                <div class="u-card" style="padding: 20px; text-align: center; background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); border: 1px solid #FCA5A5;">
-                    <div style="font-size: 0.75rem; color: #B91C1C; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">📉 最差月份</div>
-                    <div style="font-size: 1.5rem; font-weight: 800; color: #991B1B; font-family: Outfit; margin: 8px 0;">{int(worst_month['year'])}/{int(worst_month['month']):02d}</div>
+                <div class="u-card" style="padding: 20px; text-align: center; {card4_style}">
+                    <div style="font-size: 0.75rem; color: {label4_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">📉 最差月份</div>
+                    <div style="font-size: 1.5rem; font-weight: 800; color: {value4_color}; font-family: Outfit; margin: 8px 0;">{int(worst_month['year'])}/{int(worst_month['month']):02d}</div>
                     <div style="font-size: 0.85rem; color: #EF4444; font-weight: 600;">{worst_month['return']:.2f}% ({cur_sym}{format_change(worst_change)})</div>
                 </div>
             </div>
