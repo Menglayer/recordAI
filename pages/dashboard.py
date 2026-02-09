@@ -679,75 +679,76 @@ def show_dashboard(
             # 生成年份列表（确保是字符串格式）
             year_labels = [str(int(y)) for y in pivot.index.tolist()]
             
-            # 生成显示文本：同时包含百分比和金额
-            def format_cell(ret_val, change_val):
-                if pd.notna(ret_val) and pd.notna(change_val):
-                    # 格式化金额，根据大小选择单位
-                    change_display = change_val * fx_rate
-                    if abs(change_display) >= 1000:
-                        change_str = f"{change_display/1000:+.1f}k"
-                    else:
-                        change_str = f"{change_display:+.0f}"
-                    return f"{ret_val:.1f}%<br><span style='font-size:9px'>{cur_sym}{change_str}</span>"
-                elif pd.notna(ret_val):
-                    return f"{ret_val:.1f}%"
-                else:
-                    return ""
+            # 格子内只显示收益率百分比
+            text_matrix = [[f"{v:+.1f}%" if pd.notna(v) else "" for v in row] for row in pivot.values]
             
-            # 简化版本：只显示百分比和金额数值
-            text_matrix = []
+            # 构建自定义 hover 文本（包含详细金额信息）
+            hover_matrix = []
             for i, row in enumerate(pivot.values):
-                text_row = []
+                hover_row = []
                 for j, v in enumerate(row):
                     change_v = pivot_change.values[i][j] if i < len(pivot_change.values) and j < len(pivot_change.values[i]) else None
+                    year = year_labels[i]
+                    month = months[j]
                     if pd.notna(v) and pd.notna(change_v):
                         change_display = change_v * fx_rate
-                        if abs(change_display) >= 1000:
-                            change_str = f"{change_display/1000:+.1f}k"
+                        if abs(change_display) >= 10000:
+                            change_str = f"{change_display/1000:+,.1f}k"
+                        elif abs(change_display) >= 1000:
+                            change_str = f"{change_display:+,.0f}"
                         else:
                             change_str = f"{change_display:+.0f}"
-                        text_row.append(f"{v:.1f}%\n{cur_sym}{change_str}")
+                        hover_row.append(f"<b>{year}年 {month}</b><br>收益率: {v:+.2f}%<br>收益额: {cur_sym}{change_str}")
                     elif pd.notna(v):
-                        text_row.append(f"{v:.1f}%")
+                        hover_row.append(f"<b>{year}年 {month}</b><br>收益率: {v:+.2f}%")
                     else:
-                        text_row.append("")
-                text_matrix.append(text_row)
+                        hover_row.append("")
+                hover_matrix.append(hover_row)
             
             fig_heatmap = go.Figure(data=go.Heatmap(
                 z=pivot.values,
                 x=months,
                 y=year_labels,
                 colorscale=[
-                    [0, '#EF4444'],
-                    [0.5, '#F9FAFB'],
-                    [1, '#10B981']
+                    [0, '#DC2626'],      # 深红 - 大亏
+                    [0.35, '#FCA5A5'],   # 浅红 - 小亏
+                    [0.5, '#F3F4F6'],    # 灰白 - 持平
+                    [0.65, '#6EE7B7'],   # 浅绿 - 小赚
+                    [1, '#059669']       # 深绿 - 大赚
                 ],
                 zmid=0,
                 text=text_matrix,
                 texttemplate="%{text}",
-                textfont={"size": 10, "color": "#1F2937"},
-                hovertemplate="<b>%{y}年 %{x}</b><br>收益率: %{z:.2f}%<extra></extra>",
+                textfont={"size": 13, "family": "Outfit", "color": "#1F2937"},
+                hovertext=hover_matrix,
+                hovertemplate="%{hovertext}<extra></extra>",
                 showscale=True,
+                xgap=3,  # 格子间距
+                ygap=3,
                 colorbar=dict(
-                    title=dict(text="收益率%", side="right"),
+                    title=dict(text="收益率", side="right", font=dict(size=11)),
                     ticksuffix="%",
-                    len=0.6
+                    tickfont=dict(size=10),
+                    len=0.7,
+                    thickness=12,
+                    outlinewidth=0
                 )
             ))
             
             fig_heatmap.update_layout(
-                height=180 + len(pivot) * 50,  # 增加高度以适应两行文字
-                margin=dict(l=20, r=80, t=30, b=20),
+                height=120 + len(pivot) * 70,  # 增加单元格高度
+                margin=dict(l=60, r=100, t=50, b=20),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(0,0,0,0)',
                 xaxis=dict(
                     side='top',
-                    tickfont=dict(size=11, color='#6B7280', family='Inter')
+                    tickfont=dict(size=12, color='#374151', family='Inter'),
+                    tickangle=0
                 ),
                 yaxis=dict(
-                    tickfont=dict(size=12, color='#1F2937', family='Outfit'),
+                    tickfont=dict(size=14, color='#1F2937', family='Outfit', weight=600),
                     autorange='reversed',
-                    type='category',  # 强制使用分类轴，避免年份显示为小数
+                    type='category',
                     tickmode='array',
                     tickvals=year_labels,
                     ticktext=year_labels
