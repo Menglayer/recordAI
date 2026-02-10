@@ -20,6 +20,7 @@ from pages.dashboard import show_dashboard
 from pages.data_entry import show_data_entry_page
 from pages.data_view import show_data_view_page
 from pages.price import show_price_page
+from pages.analysis import show_analysis_page
 
 
 # Page config
@@ -127,7 +128,7 @@ def main():
         # Navigation
         page = st.radio(
             L.SIDEBAR_NAVIGATION,
-            [L.NAV_DASHBOARD, L.NAV_ENTRY, L.NAV_PRICES, L.NAV_DATA],
+            [L.NAV_DASHBOARD, L.NAV_ANALYSIS, L.NAV_ENTRY, L.NAV_PRICES, L.NAV_DATA],
             label_visibility="collapsed"
         )
     
@@ -137,6 +138,14 @@ def main():
     # Route to pages
     if page == L.NAV_DASHBOARD:
         show_dashboard(
+            engine=engine,
+            privacy_on=privacy_on,
+            fx_rate=fx_rate,
+            cur_sym=cur_sym,
+            dark_mode=dark_mode,
+        )
+    elif page == L.NAV_ANALYSIS:
+        show_analysis_page(
             engine=engine,
             privacy_on=privacy_on,
             fx_rate=fx_rate,

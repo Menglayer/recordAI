@@ -13,6 +13,9 @@ NAV_DATA_ENTRY = "数据录入"
 NAV_PRICE_UPDATE = "价格更新"
 NAV_DATA_VIEW = "数据查看"
 
+# Analysis
+NAV_ANALYSIS = "📊 收益分析"
+
 # Aliases for app.py compatibility
 NAV_ENTRY = NAV_DATA_ENTRY
 NAV_PRICES = NAV_PRICE_UPDATE
