@@ -119,7 +119,7 @@ def main():
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-        except:
+        except Exception:
             pass
         
         st.markdown("---")

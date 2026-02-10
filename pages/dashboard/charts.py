@@ -573,24 +573,41 @@ def _render_monthly_stats(
     win_rate = positive_months / total_months * 100 if total_months > 0 else 0
     
     # 深色模式卡片样式
+    worst_is_negative = worst_month['return'] < 0
+    
     if dark_mode:
         card1_style = "background: linear-gradient(135deg, #064E3B 0%, #065F46 100%); border: 1px solid #059669;"
         card2_style = "background: linear-gradient(135deg, #1E3A5F 0%, #1E40AF 100%); border: 1px solid #3B82F6;"
         card3_style = "background: linear-gradient(135deg, #064E3B 0%, #047857 100%); border: 1px solid #10B981;"
-        card4_style = "background: linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%); border: 1px solid #EF4444;"
         label1_color, value1_color = "#86EFAC", "#10B981"
         label2_color, value2_color = "#93C5FD", "#60A5FA"
         label3_color, value3_color = "#6EE7B7", "#10B981"
-        label4_color, value4_color = "#FCA5A5", "#F87171"
+        if worst_is_negative:
+            card4_style = "background: linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%); border: 1px solid #EF4444;"
+            label4_color, value4_color = "#FCA5A5", "#F87171"
+            worst_detail_color = "#EF4444"
+        else:
+            card4_style = "background: linear-gradient(135deg, #78350F 0%, #92400E 100%); border: 1px solid #F59E0B;"
+            label4_color, value4_color = "#FDE68A", "#FBBF24"
+            worst_detail_color = "#F59E0B"
     else:
         card1_style = "background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border: 1px solid #86EFAC;"
         card2_style = "background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 1px solid #93C5FD;"
         card3_style = "background: linear-gradient(135deg, #F0FDF4 0%, #D1FAE5 100%); border: 1px solid #6EE7B7;"
-        card4_style = "background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); border: 1px solid #FCA5A5;"
         label1_color, value1_color = "#15803D", "#166534"
         label2_color, value2_color = "#1D4ED8", "#1E40AF"
         label3_color, value3_color = "#047857", "#065F46"
-        label4_color, value4_color = "#B91C1C", "#991B1B"
+        if worst_is_negative:
+            card4_style = "background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); border: 1px solid #FCA5A5;"
+            label4_color, value4_color = "#B91C1C", "#991B1B"
+            worst_detail_color = "#EF4444"
+        else:
+            card4_style = "background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border: 1px solid #FCD34D;"
+            label4_color, value4_color = "#92400E", "#78350F"
+            worst_detail_color = "#D97706"
+    
+    # 最差月份收益符号
+    worst_return_str = f"{worst_month['return']:+.2f}%" if worst_is_negative else f"{worst_month['return']:.2f}%"
     
     st.markdown(f"""
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 1.5rem 0;">
@@ -612,7 +629,7 @@ def _render_monthly_stats(
         <div class="u-card" style="padding: 20px; text-align: center; {card4_style}">
             <div style="font-size: 0.75rem; color: {label4_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">📉 最差月份</div>
             <div style="font-size: 1.5rem; font-weight: 800; color: {value4_color}; font-family: Outfit; margin: 8px 0;">{int(worst_month['year'])}/{int(worst_month['month']):02d}</div>
-            <div style="font-size: 0.85rem; color: #EF4444; font-weight: 600;">{worst_month['return']:.2f}% ({cur_sym}{format_change(worst_change)})</div>
+            <div style="font-size: 0.85rem; color: {worst_detail_color}; font-weight: 600;">{worst_return_str} ({cur_sym}{format_change(worst_change)})</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
