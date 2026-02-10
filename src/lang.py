@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Language strings for MyLedger (Chinese)
+Updated for Analysis Page
 """
 
 # App
