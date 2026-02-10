@@ -173,8 +173,6 @@ def show_dashboard(
         selected_benchmarks=selected_benchmarks,
         get_benchmark_history=get_benchmark_history,
         fx_rate=fx_rate,
-        cur_sym=cur_sym,
-        fx_rate=fx_rate,
         cur_sym=cur_sym
     )
     
@@ -184,7 +182,6 @@ def show_dashboard(
     render_monthly_heatmap(
         history_df=history_df,
         fx_rate=fx_rate,
-        cur_sym=cur_sym,
         cur_sym=cur_sym
     )
     

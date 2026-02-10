@@ -142,7 +142,6 @@ def _render_overview_cards(
     fx_rate: float,
     cur_sym: str,
     hide_amounts: bool,
-    hide_amounts: bool,
 ) -> None:
     """渲染顶部概览卡片"""
 
@@ -237,8 +236,6 @@ def _render_yearly_cards(
     fx_rate: float,
     cur_sym: str,
     hide_amounts: bool,
-    cur_sym: str,
-    hide_amounts: bool,
 ) -> None:
     """渲染年度汇总卡片"""
     yearly = stats.get('yearly', [])
@@ -291,9 +288,6 @@ def _render_yearly_cards(
 
 def _render_monthly_cards(
     monthly_data: List[Dict],
-    fx_rate: float,
-    cur_sym: str,
-    hide_amounts: bool,
     fx_rate: float,
     cur_sym: str,
     hide_amounts: bool,
@@ -442,8 +436,6 @@ def _render_monthly_cards(
 def _render_extremes(
     stats: Dict[str, Any],
     fx_rate: float,
-    cur_sym: str,
-    hide_amounts: bool,
     cur_sym: str,
     hide_amounts: bool,
 ) -> None:
