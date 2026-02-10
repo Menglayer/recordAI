@@ -180,64 +180,64 @@ def _render_overview_cards(
         avg_display += f"<br><span style='font-size: 0.85rem; opacity: 0.85;'>{avg_amount}/月</span>"
 
     st.markdown(f"""
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 2rem;">
-        <!-- 年化收益率 -->
-        <div style="background: {bg1}; border-radius: 20px; padding: 28px 24px; border: 1px solid {border};
-                    box-shadow: 0 10px 40px rgba(102,126,234,0.25); position: relative; overflow: hidden;">
-            <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px;
-                        background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
-            <div style="position: absolute; bottom: -30px; left: -10px; width: 70px; height: 70px;
-                        background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
-            <div style="font-size: 0.78rem; color: {text_muted}; text-transform: uppercase;
-                        letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
-                📈 复利年化 (APY)
-            </div>
-            <div style="font-size: 2.6rem; font-weight: 800; color: {text_primary};
-                        font-family: 'Outfit', sans-serif; line-height: 1.1;">
-                {apy:+.2f}%
-            </div>
-            <div style="margin-top: 12px; font-size: 0.8rem; color: {text_muted};">
-                简单年化 APR: {apr:+.2f}%
-            </div>
-            <div style="margin-top: 4px; font-size: 0.78rem; color: {text_muted};">
-                运行 {days} 天
-            </div>
+<div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 2rem;">
+    <!-- 年化收益率 -->
+    <div style="background: {bg1}; border-radius: 20px; padding: 28px 24px; border: 1px solid {border};
+                box-shadow: 0 10px 40px rgba(102,126,234,0.25); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -20px; right: -20px; width: 100px; height: 100px;
+                    background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
+        <div style="position: absolute; bottom: -30px; left: -10px; width: 70px; height: 70px;
+                    background: rgba(255,255,255,0.05); border-radius: 50%;"></div>
+        <div style="font-size: 0.78rem; color: {text_muted}; text-transform: uppercase;
+                    letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
+            📈 复利年化 (APY)
         </div>
-
-        <!-- 总收益率 -->
-        <div style="background: {bg2}; border-radius: 20px; padding: 28px 24px; border: 1px solid {border};
-                    box-shadow: 0 10px 40px rgba(240,147,251,0.2); position: relative; overflow: hidden;">
-            <div style="position: absolute; top: -15px; right: -15px; width: 80px; height: 80px;
-                        background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
-            <div style="font-size: 0.78rem; color: {text_muted}; text-transform: uppercase;
-                        letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
-                🏆 累计 ROI
-            </div>
-            <div style="font-size: 2.6rem; font-weight: 800; color: {text_primary};
-                        font-family: 'Outfit', sans-serif; line-height: 1.1;">
-                {roi:+.2f}%
-            </div>
-            <div style="margin-top: 12px; font-size: 0.8rem; color: {text_muted};">
-                胜率: {win_rate:.0f}% ({stats.get('positive_months', 0)}/{stats.get('total_months', 0)} 月)
-            </div>
+        <div style="font-size: 2.6rem; font-weight: 800; color: {text_primary};
+                    font-family: 'Outfit', sans-serif; line-height: 1.1;">
+            {apy:+.2f}%
         </div>
-
-        <!-- 月均收益 -->
-        <div style="background: {bg3}; border-radius: 20px; padding: 28px 24px; border: 1px solid {border};
-                    box-shadow: 0 10px 40px rgba(79,172,254,0.2); position: relative; overflow: hidden;">
-            <div style="position: absolute; top: -25px; right: -10px; width: 90px; height: 90px;
-                        background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
-            <div style="font-size: 0.78rem; color: {text_muted}; text-transform: uppercase;
-                        letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
-                📊 月均收益
-            </div>
-            <div style="font-size: 2.2rem; font-weight: 800; color: {text_primary};
-                        font-family: 'Outfit', sans-serif; line-height: 1.2;">
-                {avg_display}
-            </div>
+        <div style="margin-top: 12px; font-size: 0.8rem; color: {text_muted};">
+            简单年化 APR: {apr:+.2f}%
+        </div>
+        <div style="margin-top: 4px; font-size: 0.78rem; color: {text_muted};">
+            运行 {days} 天
         </div>
     </div>
-    """, unsafe_allow_html=True)
+
+    <!-- 总收益率 -->
+    <div style="background: {bg2}; border-radius: 20px; padding: 28px 24px; border: 1px solid {border};
+                box-shadow: 0 10px 40px rgba(240,147,251,0.2); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -15px; right: -15px; width: 80px; height: 80px;
+                    background: rgba(255,255,255,0.1); border-radius: 50%;"></div>
+        <div style="font-size: 0.78rem; color: {text_muted}; text-transform: uppercase;
+                    letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
+            🏆 累计 ROI
+        </div>
+        <div style="font-size: 2.6rem; font-weight: 800; color: {text_primary};
+                    font-family: 'Outfit', sans-serif; line-height: 1.1;">
+            {roi:+.2f}%
+        </div>
+        <div style="margin-top: 12px; font-size: 0.8rem; color: {text_muted};">
+            胜率: {win_rate:.0f}% ({stats.get('positive_months', 0)}/{stats.get('total_months', 0)} 月)
+        </div>
+    </div>
+
+    <!-- 月均收益 -->
+    <div style="background: {bg3}; border-radius: 20px; padding: 28px 24px; border: 1px solid {border};
+                box-shadow: 0 10px 40px rgba(79,172,254,0.2); position: relative; overflow: hidden;">
+        <div style="position: absolute; top: -25px; right: -10px; width: 90px; height: 90px;
+                    background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
+        <div style="font-size: 0.78rem; color: {text_muted}; text-transform: uppercase;
+                    letter-spacing: 0.1em; font-weight: 600; margin-bottom: 12px;">
+            📊 月均收益
+        </div>
+        <div style="font-size: 2.2rem; font-weight: 800; color: {text_primary};
+                    font-family: 'Outfit', sans-serif; line-height: 1.2;">
+            {avg_display}
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 
 def _render_yearly_cards(
@@ -287,23 +287,23 @@ def _render_yearly_cards(
                                              font-weight: 600;">{amount_str}</div>"""
 
             st.markdown(f"""
-            <div style="background: {card_bg}; border-radius: 16px; padding: 22px 20px;
-                        border: 1px solid {border_c}; text-align: center; margin-bottom: 16px;
-                        transition: transform 0.2s; cursor: default;"
-                 onmouseover="this.style.transform='translateY(-3px)'"
-                 onmouseout="this.style.transform='translateY(0)'">
-                <div style="font-size: 0.75rem; color: var(--falcon-muted); text-transform: uppercase;
-                            font-weight: 600; letter-spacing: 0.08em;">{icon} {ys['year']}年</div>
-                <div style="font-size: 2rem; font-weight: 800; color: {accent};
-                            font-family: 'Outfit', sans-serif; margin: 8px 0;">
-                    {ret:+.2f}%
-                </div>
-                {amount_html}
-                <div style="font-size: 0.7rem; color: var(--falcon-muted); margin-top: 6px;">
-                    {ys['months_count']} 个月数据
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
+<div style="background: {card_bg}; border-radius: 16px; padding: 22px 20px;
+            border: 1px solid {border_c}; text-align: center; margin-bottom: 16px;
+            transition: transform 0.2s; cursor: default;"
+     onmouseover="this.style.transform='translateY(-3px)'"
+     onmouseout="this.style.transform='translateY(0)'">
+    <div style="font-size: 0.75rem; color: var(--falcon-muted); text-transform: uppercase;
+                font-weight: 600; letter-spacing: 0.08em;">{icon} {ys['year']}年</div>
+    <div style="font-size: 2rem; font-weight: 800; color: {accent};
+                font-family: 'Outfit', sans-serif; margin: 8px 0;">
+        {ret:+.2f}%
+    </div>
+    {amount_html}
+    <div style="font-size: 0.7rem; color: var(--falcon-muted); margin-top: 6px;">
+        {ys['months_count']} 个月数据
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
 
 def _render_monthly_cards(
@@ -410,48 +410,48 @@ def _render_monthly_cards(
                 arrow = "↗" if is_positive else "↘" if ret < 0 else "→"
 
                 st.markdown(f"""
-                <div style="background: {gradient}; border-radius: 18px; padding: 24px 20px;
-                            margin-bottom: 16px; position: relative; overflow: hidden;
-                            transition: all 0.3s ease; cursor: default;
-                            box-shadow: 0 4px 15px rgba(0,0,0,0.08);"
-                     onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 30px rgba(0,0,0,0.15)'"
-                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.08)'">
+<div style="background: {gradient}; border-radius: 18px; padding: 24px 20px;
+            margin-bottom: 16px; position: relative; overflow: hidden;
+            transition: all 0.3s ease; cursor: default;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);"
+     onmouseover="this.style.transform='translateY(-4px)'; this.style.boxShadow='0 12px 30px rgba(0,0,0,0.15)'"
+     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0,0,0,0.08)'">
 
-                    <!-- 装饰圆 -->
-                    <div style="position: absolute; top: -15px; right: -15px; width: 60px; height: 60px;
-                                background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
+    <!-- 装饰圆 -->
+    <div style="position: absolute; top: -15px; right: -15px; width: 60px; height: 60px;
+                background: rgba(255,255,255,0.08); border-radius: 50%;"></div>
 
-                    <!-- 头部: 月份标签 -->
-                    <div style="display: flex; justify-content: space-between; align-items: center;
-                                margin-bottom: 14px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span style="font-size: 1.5rem;">{emoji}</span>
-                            <div>
-                                <div style="font-size: 1rem; font-weight: 700; color: {text_color};
-                                            font-family: 'Outfit', sans-serif;">
-                                    {m_data['year']}.{m_data['month']:02d}
-                                </div>
-                                <div style="font-size: 0.72rem; color: {text_color}; opacity: 0.7;">
-                                    {month_name}
-                                </div>
-                            </div>
-                        </div>
-                        <div style="background: {badge_bg}; border-radius: 10px; padding: 4px 10px;
-                                    font-size: 0.75rem; font-weight: 600; color: {text_color};">
-                            {arrow} {ret:+.1f}%
-                        </div>
-                    </div>
-
-                    <!-- 核心数值 -->
-                    <div style="font-size: 2rem; font-weight: 800; color: {text_color};
-                                font-family: 'Outfit', sans-serif; line-height: 1.1;">
-                        {ret:+.2f}%
-                    </div>
-
-                    {amount_html}
-                    {nw_html}
+    <!-- 头部: 月份标签 -->
+    <div style="display: flex; justify-content: space-between; align-items: center;
+                margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 1.5rem;">{emoji}</span>
+            <div>
+                <div style="font-size: 1rem; font-weight: 700; color: {text_color};
+                            font-family: 'Outfit', sans-serif;">
+                    {m_data['year']}.{m_data['month']:02d}
                 </div>
-                """, unsafe_allow_html=True)
+                <div style="font-size: 0.72rem; color: {text_color}; opacity: 0.7;">
+                    {month_name}
+                </div>
+            </div>
+        </div>
+        <div style="background: {badge_bg}; border-radius: 10px; padding: 4px 10px;
+                    font-size: 0.75rem; font-weight: 600; color: {text_color};">
+            {arrow} {ret:+.1f}%
+        </div>
+    </div>
+
+    <!-- 核心数值 -->
+    <div style="font-size: 2rem; font-weight: 800; color: {text_color};
+                font-family: 'Outfit', sans-serif; line-height: 1.1;">
+        {ret:+.2f}%
+    </div>
+
+    {amount_html}
+    {nw_html}
+</div>
+""", unsafe_allow_html=True)
 
 
 def _render_extremes(
@@ -499,26 +499,26 @@ def _render_extremes(
                                              margin-top: 4px;">{amt}</div>"""
 
             st.markdown(f"""
-            <div style="background: {bg}; border-radius: 18px; padding: 26px 22px;
-                        border: 1px solid {border_c}; text-align: center; margin-bottom: 20px;
-                        transition: transform 0.2s;"
-                 onmouseover="this.style.transform='scale(1.02)'"
-                 onmouseout="this.style.transform='scale(1)'">
-                <div style="font-size: 0.78rem; color: var(--falcon-muted); text-transform: uppercase;
-                            font-weight: 600; letter-spacing: 0.08em; margin-bottom: 10px;">
-                    {label}
-                </div>
-                <div style="font-size: 1.4rem; font-weight: 700; color: {accent};
-                            font-family: 'Outfit', sans-serif;">
-                    {data['year']}/{data['month']:02d}
-                </div>
-                <div style="font-size: 2.2rem; font-weight: 800; color: {accent};
-                            font-family: 'Outfit', sans-serif; margin: 6px 0;">
-                    {data['return_pct']:+.2f}%
-                </div>
-                {amount_html}
-            </div>
-            """, unsafe_allow_html=True)
+<div style="background: {bg}; border-radius: 18px; padding: 26px 22px;
+            border: 1px solid {border_c}; text-align: center; margin-bottom: 20px;
+            transition: transform 0.2s;"
+     onmouseover="this.style.transform='scale(1.02)'"
+     onmouseout="this.style.transform='scale(1)'">
+    <div style="font-size: 0.78rem; color: var(--falcon-muted); text-transform: uppercase;
+                font-weight: 600; letter-spacing: 0.08em; margin-bottom: 10px;">
+        {label}
+    </div>
+    <div style="font-size: 1.4rem; font-weight: 700; color: {accent};
+                font-family: 'Outfit', sans-serif;">
+        {data['year']}/{data['month']:02d}
+    </div>
+    <div style="font-size: 2.2rem; font-weight: 800; color: {accent};
+                font-family: 'Outfit', sans-serif; margin: 6px 0;">
+        {data['return_pct']:+.2f}%
+    </div>
+    {amount_html}
+</div>
+""", unsafe_allow_html=True)
 
 
 # ─────────────── 页面主入口 ───────────────
@@ -546,17 +546,17 @@ def show_analysis_page(
     col_title, col_toggle = st.columns([3, 1])
     with col_title:
         st.markdown("""
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 0.5rem;">
-            <span style="font-size: 2rem;">📊</span>
-            <div>
-                <div style="font-size: 1.5rem; font-weight: 800; font-family: 'Outfit', sans-serif;
-                            color: var(--falcon-black);">收益分析</div>
-                <div style="font-size: 0.85rem; color: var(--falcon-muted);">
-                    月度收益 · 年化回报 · 趋势洞察
-                </div>
-            </div>
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 0.5rem;">
+    <span style="font-size: 2rem;">📊</span>
+    <div>
+        <div style="font-size: 1.5rem; font-weight: 800; font-family: 'Outfit', sans-serif;
+                    color: var(--falcon-black);">收益分析</div>
+        <div style="font-size: 0.85rem; color: var(--falcon-muted);">
+            月度收益 · 年化回报 · 趋势洞察
         </div>
-        """, unsafe_allow_html=True)
+    </div>
+</div>
+""", unsafe_allow_html=True)
     with col_toggle:
         hide_amounts = st.toggle(
             "🔒 隐藏金额",
