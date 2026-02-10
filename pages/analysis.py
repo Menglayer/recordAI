@@ -6,6 +6,7 @@
 from typing import Dict, Any, List, Optional
 from datetime import date, timedelta, datetime
 import calendar
+import textwrap
 
 
 import streamlit as st
@@ -138,9 +139,7 @@ def _format_amount(val: float, fx_rate: float, cur_sym: str) -> str:
     return f"{cur_sym}{val * fx_rate:+,.2f}"
 
 
-def clean_html(html: str) -> str:
-    """移除HTML字符串中每行的前导空格，防止Markdown解析错误"""
-    return "\n".join(line.lstrip() for line in html.split("\n"))
+
 
 
 def _render_overview_cards(
@@ -176,7 +175,7 @@ def _render_overview_cards(
         avg_amount = _format_amount(avg_change, fx_rate, cur_sym)
         avg_display += f"<br><span style='font-size: 0.85rem; opacity: 0.85;'>{avg_amount}/月</span>"
 
-    st.markdown(clean_html(f"""
+    st.markdown(textwrap.dedent(f"""\
 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 2rem;">
     <!-- 年化收益率 -->
     <div style="background: {bg1}; border-radius: 20px; padding: 28px 24px; border: 1px solid {border};
@@ -272,7 +271,7 @@ def _render_yearly_cards(
                 amount_html = f"""<div style="font-size: 0.85rem; color: {accent}; margin-top: 4px;
                                              font-weight: 600;">{amount_str}</div>"""
 
-            st.markdown(clean_html(f"""
+            st.markdown(textwrap.dedent(f"""\
 <div style="background: {card_bg}; border-radius: 16px; padding: 22px 20px;
             border: 1px solid {border_c}; text-align: center; margin-bottom: 16px;
             transition: transform 0.2s; cursor: default;"
@@ -394,7 +393,7 @@ def _render_monthly_cards(
                 # 箭头方向
                 arrow = "↗" if is_positive else "↘" if ret < 0 else "→"
 
-                st.markdown(clean_html(f"""
+                st.markdown(textwrap.dedent(f"""\
 <div style="background: {gradient}; border-radius: 18px; padding: 24px 20px;
             margin-bottom: 16px; position: relative; overflow: hidden;
             transition: all 0.3s ease; cursor: default;
@@ -478,7 +477,7 @@ def _render_extremes(
                 amount_html = f"""<div style="font-size: 1rem; color: {accent}; font-weight: 600;
                                              margin-top: 4px;">{amt}</div>"""
 
-            st.markdown(clean_html(f"""
+            st.markdown(textwrap.dedent(f"""\
 <div style="background: {bg}; border-radius: 18px; padding: 26px 22px;
             border: 1px solid {border_c}; text-align: center; margin-bottom: 20px;
             transition: transform 0.2s;"
@@ -523,7 +522,7 @@ def show_analysis_page(
     # 页面级隐藏金额开关 (独立于全局隐私模式)
     col_title, col_toggle = st.columns([3, 1])
     with col_title:
-        st.markdown(clean_html("""
+        st.markdown(textwrap.dedent("""\
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 0.5rem;">
     <span style="font-size: 2rem;">📊</span>
     <div>
