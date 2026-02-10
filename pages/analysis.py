@@ -142,25 +142,17 @@ def _render_overview_cards(
     fx_rate: float,
     cur_sym: str,
     hide_amounts: bool,
-    dark_mode: bool,
+    hide_amounts: bool,
 ) -> None:
     """渲染顶部概览卡片"""
 
     # 配色
-    if dark_mode:
-        bg1 = "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)"
-        bg2 = "linear-gradient(135deg, #0f3460 0%, #16213e 100%)"
-        bg3 = "linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%)"
-        text_primary = "#E2E8F0"
-        text_muted = "#94A3B8"
-        border = "#334155"
-    else:
-        bg1 = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-        bg2 = "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
-        bg3 = "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
-        text_primary = "#FFFFFF"
-        text_muted = "rgba(255,255,255,0.75)"
-        border = "rgba(255,255,255,0.2)"
+    bg1 = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+    bg2 = "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
+    bg3 = "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
+    text_primary = "#FFFFFF"
+    text_muted = "rgba(255,255,255,0.75)"
+    border = "rgba(255,255,255,0.2)"
 
     apy = stats.get('apy', 0)
     apr = stats.get('apr', 0)
@@ -245,7 +237,8 @@ def _render_yearly_cards(
     fx_rate: float,
     cur_sym: str,
     hide_amounts: bool,
-    dark_mode: bool,
+    cur_sym: str,
+    hide_amounts: bool,
 ) -> None:
     """渲染年度汇总卡片"""
     yearly = stats.get('yearly', [])
@@ -261,24 +254,14 @@ def _render_yearly_cards(
             is_positive = ret >= 0
             icon = "📈" if is_positive else "📉"
 
-            if dark_mode:
-                if is_positive:
-                    card_bg = "linear-gradient(135deg, #064E3B 0%, #065F46 100%)"
-                    accent = "#10B981"
-                    border_c = "#059669"
-                else:
-                    card_bg = "linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%)"
-                    accent = "#EF4444"
-                    border_c = "#DC2626"
+            if is_positive:
+                card_bg = "linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)"
+                accent = "#059669"
+                border_c = "#86EFAC"
             else:
-                if is_positive:
-                    card_bg = "linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)"
-                    accent = "#059669"
-                    border_c = "#86EFAC"
-                else:
-                    card_bg = "linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)"
-                    accent = "#DC2626"
-                    border_c = "#FCA5A5"
+                card_bg = "linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)"
+                accent = "#DC2626"
+                border_c = "#FCA5A5"
 
             amount_html = ""
             if not hide_amounts:
@@ -311,7 +294,9 @@ def _render_monthly_cards(
     fx_rate: float,
     cur_sym: str,
     hide_amounts: bool,
-    dark_mode: bool,
+    fx_rate: float,
+    cur_sym: str,
+    hide_amounts: bool,
     selected_year: Optional[int] = None,
 ) -> None:
     """渲染月度收益卡片网格"""
@@ -354,34 +339,34 @@ def _render_monthly_cards(
                         text_color = "#FFFFFF"
                         badge_bg = "rgba(255,255,255,0.2)"
                     elif ret > 5:
-                        gradient_a = "#064E3B" if dark_mode else "#F0FDF4"
-                        gradient_b = "#065F46" if dark_mode else "#DCFCE7"
+                        gradient_a = "#F0FDF4"
+                        gradient_b = "#DCFCE7"
                         gradient = f"linear-gradient(135deg, {gradient_a} 0%, {gradient_b} 100%)"
                         text_color = "#10B981"
-                        badge_bg = "#10B981" if dark_mode else "rgba(16, 185, 129, 0.15)"
+                        badge_bg = "rgba(16, 185, 129, 0.15)"
                     else:
-                        gradient_a = "#1E293B" if dark_mode else "#F8FAFC"
-                        gradient_b = "#064E3B" if dark_mode else "#F0FDF4"
+                        gradient_a = "#F8FAFC"
+                        gradient_b = "#F0FDF4"
                         gradient = f"linear-gradient(135deg, {gradient_a} 0%, {gradient_b} 100%)"
                         text_color = "#10B981"
-                        badge_bg = "#10B981" if dark_mode else "rgba(16, 185, 129, 0.1)"
+                        badge_bg = "rgba(16, 185, 129, 0.1)"
                 else:
                     if ret < -10:
                         gradient = "linear-gradient(135deg, #DC2626 0%, #EF4444 50%, #F87171 100%)"
                         text_color = "#FFFFFF"
                         badge_bg = "rgba(255,255,255,0.2)"
                     elif ret < -5:
-                        gradient_a = "#7F1D1D" if dark_mode else "#FEF2F2"
-                        gradient_b = "#991B1B" if dark_mode else "#FEE2E2"
+                        gradient_a = "#FEF2F2"
+                        gradient_b = "#FEE2E2"
                         gradient = f"linear-gradient(135deg, {gradient_a} 0%, {gradient_b} 100%)"
                         text_color = "#EF4444"
-                        badge_bg = "#EF4444" if dark_mode else "rgba(239, 68, 68, 0.15)"
+                        badge_bg = "rgba(239, 68, 68, 0.15)"
                     else:
-                        gradient_a = "#1E293B" if dark_mode else "#F8FAFC"
-                        gradient_b = "#7F1D1D" if dark_mode else "#FEF2F2"
+                        gradient_a = "#F8FAFC"
+                        gradient_b = "#FEF2F2"
                         gradient = f"linear-gradient(135deg, {gradient_a} 0%, {gradient_b} 100%)"
                         text_color = "#EF4444"
-                        badge_bg = "#EF4444" if dark_mode else "rgba(239, 68, 68, 0.1)"
+                        badge_bg = "rgba(239, 68, 68, 0.1)"
 
                 # 收益额显示
                 amount_html = ""
@@ -459,7 +444,8 @@ def _render_extremes(
     fx_rate: float,
     cur_sym: str,
     hide_amounts: bool,
-    dark_mode: bool,
+    cur_sym: str,
+    hide_amounts: bool,
 ) -> None:
     """渲染最佳/最差月份对比"""
     best = stats.get('best_month')
@@ -473,23 +459,19 @@ def _render_extremes(
 
     for col, data, label, colors in [
         (col1, best, "🏆 最佳月份", {
-            'dark_bg': "linear-gradient(135deg, #064E3B 0%, #047857 100%)",
             'light_bg': "linear-gradient(135deg, #F0FDF4 0%, #D1FAE5 100%)",
             'accent': "#10B981",
-            'dark_border': "#059669",
             'light_border': "#6EE7B7",
         }),
         (col2, worst, "📉 最差月份", {
-            'dark_bg': "linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%)" if worst['return_pct'] < 0 else "linear-gradient(135deg, #78350F 0%, #92400E 100%)",
             'light_bg': "linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)" if worst['return_pct'] < 0 else "linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%)",
             'accent': "#EF4444" if worst['return_pct'] < 0 else "#F59E0B",
-            'dark_border': "#DC2626" if worst['return_pct'] < 0 else "#D97706",
             'light_border': "#FCA5A5" if worst['return_pct'] < 0 else "#FCD34D",
         }),
     ]:
         with col:
-            bg = colors['dark_bg'] if dark_mode else colors['light_bg']
-            border_c = colors['dark_border'] if dark_mode else colors['light_border']
+            bg = colors['light_bg']
+            border_c = colors['light_border']
             accent = colors['accent']
 
             amount_html = ""
@@ -528,7 +510,6 @@ def show_analysis_page(
     privacy_on: bool = False,
     fx_rate: float = 1.0,
     cur_sym: str = "$",
-    dark_mode: bool = False,
 ) -> None:
     """
     收益分析页面主入口
@@ -538,7 +519,6 @@ def show_analysis_page(
         privacy_on: 全局隐私模式开关
         fx_rate: 汇率
         cur_sym: 货币符号
-        dark_mode: 深色模式开关
     """
     st.markdown("---")
 
@@ -583,17 +563,17 @@ def show_analysis_page(
         return
 
     # ========== 渲染：概览卡片 ==========
-    _render_overview_cards(stats, fx_rate, cur_sym, hide_amounts, dark_mode)
+    _render_overview_cards(stats, fx_rate, cur_sym, hide_amounts)
 
     st.markdown("---")
 
     # ========== 渲染：年度汇总 ==========
-    _render_yearly_cards(stats, fx_rate, cur_sym, hide_amounts, dark_mode)
+    _render_yearly_cards(stats, fx_rate, cur_sym, hide_amounts)
 
     st.markdown("---")
 
     # ========== 渲染：极值对比 ==========
-    _render_extremes(stats, fx_rate, cur_sym, hide_amounts, dark_mode)
+    _render_extremes(stats, fx_rate, cur_sym, hide_amounts)
 
     st.markdown("---")
 
@@ -613,4 +593,4 @@ def show_analysis_page(
     selected_year = int(selected_year_str) if selected_year_str != "全部" else None
 
     # ========== 渲染：月度卡片 ==========
-    _render_monthly_cards(monthly_data, fx_rate, cur_sym, hide_amounts, dark_mode, selected_year)
+    _render_monthly_cards(monthly_data, fx_rate, cur_sym, hide_amounts, selected_year)

@@ -12,40 +12,24 @@ MODERN_COLORS = [
     '#EC4899', '#8B5CF6', '#14B8A6', '#F43F5E'
 ]
 
-def apply_custom_design(dark_mode=False):
-    """Apply custom design with optional dark mode"""
+def apply_custom_design():
+    """Apply custom design (Light Mode)"""
     
-    # Theme-aware CSS variables
-    if dark_mode:
-        theme_vars = """
-            --falcon-bg: #0F172A;
-            --falcon-card: #1E293B;
-            --falcon-primary: #10B981;
-            --falcon-black: #F8FAFC;
-            --falcon-text: #E2E8F0;
-            --falcon-muted: #94A3B8;
-            --falcon-border: #334155;
-            --falcon-hover: #334155;
-            --falcon-skeleton: linear-gradient(90deg, #1E293B 25%, #334155 50%, #1E293B 75%);
-        """
-        sidebar_active_bg = "#10B981"
-        sidebar_active_text = "#FFFFFF"
-        card_shadow = "0 4px 20px rgba(0,0,0,0.3)"
-    else:
-        theme_vars = """
-            --falcon-bg: #F9FAFB;
-            --falcon-card: #FFFFFF;
-            --falcon-primary: #10B981;
-            --falcon-black: #0F172A;
-            --falcon-text: #1E293B;
-            --falcon-muted: #64748B;
-            --falcon-border: #F1F5F9;
-            --falcon-hover: #F8FAFC;
-            --falcon-skeleton: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
-        """
-        sidebar_active_bg = "#0F172A"
-        sidebar_active_text = "#FFFFFF"
-        card_shadow = "0 1px 3px rgba(0,0,0,0.02)"
+    # Theme-aware CSS variables (Light Mode)
+    theme_vars = """
+        --falcon-bg: #F9FAFB;
+        --falcon-card: #FFFFFF;
+        --falcon-primary: #10B981;
+        --falcon-black: #0F172A;
+        --falcon-text: #1E293B;
+        --falcon-muted: #64748B;
+        --falcon-border: #F1F5F9;
+        --falcon-hover: #F8FAFC;
+        --falcon-skeleton: linear-gradient(90deg, #F3F4F6 25%, #E5E7EB 50%, #F3F4F6 75%);
+    """
+    sidebar_active_bg = "#0F172A"
+    sidebar_active_text = "#FFFFFF"
+    card_shadow = "0 1px 3px rgba(0,0,0,0.02)"
     
     st.markdown(f"""
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
@@ -171,8 +155,8 @@ def apply_custom_design(dark_mode=False):
             border-radius: 8px;
             gap: 4px;
         }}
-        .d-up {{ background-color: {'#064E3B' if dark_mode else '#F0FDF4'}; color: #10B981; }}
-        .d-down {{ background-color: {'#7F1D1D' if dark_mode else '#FEF2F2'}; color: #EF4444; }}
+        .d-up {{ background-color: #F0FDF4; color: #10B981; }}
+        .d-down {{ background-color: #FEF2F2; color: #EF4444; }}
         .d-n {{ background-color: var(--falcon-hover); color: var(--falcon-muted); }}
 
         .benchmark-tag {{

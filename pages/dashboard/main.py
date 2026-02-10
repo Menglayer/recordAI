@@ -38,7 +38,7 @@ def show_dashboard(
     privacy_on: bool = False,
     fx_rate: float = 1.0,
     cur_sym: str = "$",
-    dark_mode: bool = False,
+    cur_sym: str = "$",
 ) -> None:
     """
     Dashboard 主页面
@@ -48,7 +48,7 @@ def show_dashboard(
         privacy_on: 隐私模式开关
         fx_rate: 汇率
         cur_sym: 货币符号
-        dark_mode: 深色模式开关
+        cur_sym: 货币符号
     """
     st.markdown("---")
     
@@ -176,7 +176,8 @@ def show_dashboard(
         get_benchmark_history=get_benchmark_history,
         fx_rate=fx_rate,
         cur_sym=cur_sym,
-        dark_mode=dark_mode
+        fx_rate=fx_rate,
+        cur_sym=cur_sym
     )
     
     st.markdown("---")
@@ -186,7 +187,7 @@ def show_dashboard(
         history_df=history_df,
         fx_rate=fx_rate,
         cur_sym=cur_sym,
-        dark_mode=dark_mode
+        cur_sym=cur_sym
     )
     
     st.markdown("---")

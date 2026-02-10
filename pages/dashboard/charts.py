@@ -14,16 +14,8 @@ from src import lang as L
 from src.styles import MODERN_COLORS
 
 
-def get_chart_theme(dark_mode: bool) -> Dict[str, str]:
+def get_chart_theme() -> Dict[str, str]:
     """获取图表主题配置"""
-    if dark_mode:
-        return {
-            'bg': 'rgba(0,0,0,0)',
-            'paper_bg': 'rgba(0,0,0,0)',
-            'font_color': '#E2E8F0',
-            'grid_color': 'rgba(148, 163, 184, 0.2)',
-            'line_color': '#334155'
-        }
     return {
         'bg': 'rgba(0,0,0,0)',
         'paper_bg': 'rgba(0,0,0,0)',
@@ -127,7 +119,7 @@ def render_history_chart(
     get_benchmark_history: Callable,
     fx_rate: float,
     cur_sym: str,
-    dark_mode: bool
+    cur_sym: str
 ) -> None:
     """
     渲染净值历史曲线图
@@ -139,9 +131,8 @@ def render_history_chart(
         get_benchmark_history: 获取基准数据的函数
         fx_rate: 汇率
         cur_sym: 货币符号
-        dark_mode: 深色模式开关
     """
-    theme = get_chart_theme(dark_mode)
+    theme = get_chart_theme()
     
     if history_df.empty:
         st.info(L.CHART_NO_HISTORY)
@@ -345,10 +336,10 @@ def render_history_chart(
         ),
         hovermode='x unified',
         hoverlabel=dict(
-            bgcolor='#1E293B' if dark_mode else 'white',
+            bgcolor='white',
             font_size=14,
             font_family='Inter',
-            font_color='#E2E8F0' if dark_mode else '#1E293B',
+            font_color='#1E293B',
             bordercolor=theme['line_color']
         ),
         showlegend=has_benchmarks,
@@ -359,7 +350,7 @@ def render_history_chart(
             xanchor='center',
             x=0.5,
             font=dict(size=9, family='Inter', color=theme['font_color']),
-            bgcolor='rgba(30, 41, 59, 0.9)' if dark_mode else 'rgba(255,255,255,0.9)',
+            bgcolor='rgba(255,255,255,0.9)',
             bordercolor=theme['line_color'],
             borderwidth=1
         )
@@ -390,8 +381,7 @@ def render_history_chart(
 def render_monthly_heatmap(
     history_df: pd.DataFrame,
     fx_rate: float,
-    cur_sym: str,
-    dark_mode: bool
+    cur_sym: str
 ) -> None:
     """
     渲染月度收益热力图
@@ -400,11 +390,10 @@ def render_monthly_heatmap(
         history_df: 历史净值 DataFrame
         fx_rate: 汇率
         cur_sym: 货币符号
-        dark_mode: 深色模式开关
     """
     st.subheader("📅 月度收益热力图")
     
-    theme = get_chart_theme(dark_mode)
+    theme = get_chart_theme()
     
     if history_df.empty or len(history_df) < 2:
         st.info("需要至少2个月的数据才能显示热力图")
@@ -544,14 +533,13 @@ def render_monthly_heatmap(
     st.plotly_chart(fig_heatmap, use_container_width=True, config={'displayModeBar': False})
     
     # 统计卡片
-    _render_monthly_stats(monthly_df, fx_rate, cur_sym, dark_mode)
+    _render_monthly_stats(monthly_df, fx_rate, cur_sym)
 
 
 def _render_monthly_stats(
     monthly_df: pd.DataFrame,
     fx_rate: float,
-    cur_sym: str,
-    dark_mode: bool
+    cur_sym: str
 ) -> None:
     """渲染月度统计卡片"""
     positive_months = (monthly_df['return'] > 0).sum()
@@ -575,36 +563,20 @@ def _render_monthly_stats(
     # 深色模式卡片样式
     worst_is_negative = worst_month['return'] < 0
     
-    if dark_mode:
-        card1_style = "background: linear-gradient(135deg, #064E3B 0%, #065F46 100%); border: 1px solid #059669;"
-        card2_style = "background: linear-gradient(135deg, #1E3A5F 0%, #1E40AF 100%); border: 1px solid #3B82F6;"
-        card3_style = "background: linear-gradient(135deg, #064E3B 0%, #047857 100%); border: 1px solid #10B981;"
-        label1_color, value1_color = "#86EFAC", "#10B981"
-        label2_color, value2_color = "#93C5FD", "#60A5FA"
-        label3_color, value3_color = "#6EE7B7", "#10B981"
-        if worst_is_negative:
-            card4_style = "background: linear-gradient(135deg, #7F1D1D 0%, #991B1B 100%); border: 1px solid #EF4444;"
-            label4_color, value4_color = "#FCA5A5", "#F87171"
-            worst_detail_color = "#EF4444"
-        else:
-            card4_style = "background: linear-gradient(135deg, #78350F 0%, #92400E 100%); border: 1px solid #F59E0B;"
-            label4_color, value4_color = "#FDE68A", "#FBBF24"
-            worst_detail_color = "#F59E0B"
+    card1_style = "background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border: 1px solid #86EFAC;"
+    card2_style = "background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 1px solid #93C5FD;"
+    card3_style = "background: linear-gradient(135deg, #F0FDF4 0%, #D1FAE5 100%); border: 1px solid #6EE7B7;"
+    label1_color, value1_color = "#15803D", "#166534"
+    label2_color, value2_color = "#1D4ED8", "#1E40AF"
+    label3_color, value3_color = "#047857", "#065F46"
+    if worst_is_negative:
+        card4_style = "background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); border: 1px solid #FCA5A5;"
+        label4_color, value4_color = "#B91C1C", "#991B1B"
+        worst_detail_color = "#EF4444"
     else:
-        card1_style = "background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border: 1px solid #86EFAC;"
-        card2_style = "background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 1px solid #93C5FD;"
-        card3_style = "background: linear-gradient(135deg, #F0FDF4 0%, #D1FAE5 100%); border: 1px solid #6EE7B7;"
-        label1_color, value1_color = "#15803D", "#166534"
-        label2_color, value2_color = "#1D4ED8", "#1E40AF"
-        label3_color, value3_color = "#047857", "#065F46"
-        if worst_is_negative:
-            card4_style = "background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%); border: 1px solid #FCA5A5;"
-            label4_color, value4_color = "#B91C1C", "#991B1B"
-            worst_detail_color = "#EF4444"
-        else:
-            card4_style = "background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border: 1px solid #FCD34D;"
-            label4_color, value4_color = "#92400E", "#78350F"
-            worst_detail_color = "#D97706"
+        card4_style = "background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border: 1px solid #FCD34D;"
+        label4_color, value4_color = "#92400E", "#78350F"
+        worst_detail_color = "#D97706"
     
     # 最差月份收益符号
     worst_return_str = f"{worst_month['return']:+.2f}%" if worst_is_negative else f"{worst_month['return']:.2f}%"
