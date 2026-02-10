@@ -118,7 +118,6 @@ def render_history_chart(
     selected_benchmarks: List[str],
     get_benchmark_history: Callable,
     fx_rate: float,
-    cur_sym: str,
     cur_sym: str
 ) -> None:
     """
