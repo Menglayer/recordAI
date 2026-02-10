@@ -8,7 +8,7 @@ from sqlalchemy import and_
 
 from src.models import Snapshot
 from src.database import (
-    session_scope, save_snapshots_batch, save_transfer, get_unique_accounts
+    session_scope, save_snapshots_batch, save_transfer, get_unique_accounts, save_journal
 )
 from src.calculations import calculate_current_net_worth
 from src.utils import clear_data_cache
@@ -21,7 +21,7 @@ def show_data_entry_page(engine):
     st.markdown("---")
     st.header(L.ENTRY_TITLE)
     
-    tab1, tab2 = st.tabs([L.ENTRY_SNAPSHOT, L.TRANSFER_TITLE])
+    tab1, tab2, tab3 = st.tabs([L.ENTRY_SNAPSHOT, L.TRANSFER_TITLE, L.JOURNAL_TITLE])
     
     with tab1:
         st.subheader(L.ENTRY_SNAPSHOT)
@@ -289,3 +289,31 @@ def show_data_entry_page(engine):
                         st.success(L.TRANSFER_SAVED.format(type_str, amount_usd))
                     except Exception as e:
                         st.error(f"{L.ENTRY_SAVE_FAILED}: {e}")
+
+    with tab3:
+        st.subheader("📝 投资复盘")
+        
+        with st.form("journal_form"):
+            col1, col2 = st.columns([1, 3])
+            with col1:
+                j_date = st.date_input("复盘日期", value=date.today())
+            with col2:
+                j_tags = st.text_input(L.JOURNAL_TAGS, placeholder=L.JOURNAL_TAGS_HINT)
+            
+            j_content = st.text_area(
+                L.JOURNAL_CONTENT, 
+                height=250, 
+                placeholder=L.JOURNAL_PLACEHOLDER,
+                label_visibility="collapsed"
+            )
+            
+            if st.form_submit_button(L.JOURNAL_SAVE, type="primary", use_container_width=True):
+                if not j_content or not j_content.strip():
+                     st.warning("日记内容不能为空")
+                else:
+                     try:
+                         save_journal(engine, j_date, j_content, j_tags)
+                         st.success(L.JOURNAL_SAVED)
+                         st.balloons()
+                     except Exception as e:
+                         st.error(f"保存失败: {e}")

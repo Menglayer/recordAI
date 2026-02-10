@@ -8,13 +8,13 @@ from typing import Optional, List, Generator, Any
 
 import streamlit as st
 import pandas as pd
-from datetime import date
+from datetime import date, datetime
 from sqlalchemy import create_engine, desc
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
-from src.models import Snapshot, Transfer, PriceHistory
+from src.models import Snapshot, Transfer, PriceHistory, Journal
 
 
 @lru_cache(maxsize=4)
@@ -140,6 +140,41 @@ def save_transfer(
             note=note
         )
         session.add(transfer)
+        return True
+
+
+def save_journal(
+    engine: Engine,
+    journal_date: date,
+    content: str,
+    tags: Optional[str] = None
+) -> bool:
+    """
+    保存复盘日记
+    
+    Args:
+        engine: 数据库引擎
+        journal_date: 日记日期
+        content: 内容
+        tags: 标签 (逗号分隔)
+        
+    Returns:
+        bool: 是否保存成功
+    """
+    with session_scope(engine) as session:
+        # Check if exists for date, update if so
+        existing = session.query(Journal).filter(Journal.date == journal_date).first()
+        if existing:
+            existing.content = content
+            existing.tags = tags
+            existing.created_at = datetime.utcnow()
+        else:
+            journal = Journal(
+                date=journal_date,
+                content=content,
+                tags=tags
+            )
+            session.add(journal)
         return True
 
 
@@ -376,3 +411,11 @@ def delete_price(engine: Engine, price_id: int) -> bool:
             return True
     except SQLAlchemyError:
         return False
+
+
+def get_journals(engine: Engine, limit: int = 50) -> pd.DataFrame:
+    """获取复盘日记列表"""
+    with session_scope(engine) as session:
+        journals = session.query(Journal).order_by(desc(Journal.date)).limit(limit).all()
+        return pd.DataFrame([j.to_dict() for j in journals])
+

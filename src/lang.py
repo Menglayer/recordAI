@@ -162,4 +162,13 @@ VIEW_TRANSFERS = "转账"
 VIEW_PRICES = "价格"
 VIEW_RECENT = "最近记录"
 VIEW_NO_DATA = "暂无数据"
-VIEW_SOURCE = "来源"
+
+# Journal
+JOURNAL_TITLE = "复盘日记"
+JOURNAL_CONTENT = "日记内容"
+JOURNAL_TAGS = "标签"
+JOURNAL_TAGS_HINT = "如: 抄底, 清仓, 震荡 (逗号分隔)"
+JOURNAL_PLACEHOLDER = "今日思考：\n1. 市场分析...\n2. 操作理由...\n3. 情绪记录..."
+JOURNAL_SAVE = "保存日记"
+JOURNAL_SAVED = "日记已保存！"
+

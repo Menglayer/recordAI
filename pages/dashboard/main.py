@@ -31,6 +31,7 @@ from pages.dashboard.charts import (
     render_monthly_heatmap
 )
 from pages.dashboard.holdings import render_holdings_table
+from pages.dashboard.journal import render_journal_section
 
 
 def show_dashboard(
@@ -193,3 +194,8 @@ def show_dashboard(
         fx_rate=fx_rate,
         cur_sym=cur_sym
     )
+    
+    st.markdown("---")
+    
+    # ========== 复盘日记 ==========
+    render_journal_section(engine)

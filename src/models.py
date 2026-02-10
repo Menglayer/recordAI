@@ -2,7 +2,7 @@
 MyLedger - 数据模型定义
 使用 SQLAlchemy ORM 定义三张核心表
 """
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, create_engine
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Text, create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
@@ -58,6 +58,41 @@ class PriceHistory(Base):
     
     def __repr__(self):
         return f"<PriceHistory(date={self.date}, symbol={self.symbol}, price=${self.price_usd})>"
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+
+class Journal(Base):
+    """复盘日记表 - 记录每日思考与操作"""
+    __tablename__ = 'journal'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    date = Column(Date, nullable=False, index=True)
+    content = Column(Text, nullable=False)   # 日记内容
+    tags = Column(String(200), nullable=True) # 标签
+#    created_at = Column(DateTime, default=datetime.utcnow) # Duplicate functionality if using created_at via inheritance, but we are explicit here.
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<Journal(date={self.date}, content={self.content[:20]}...)>"
+
+    def to_dict(self):
+        return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+
+
+class Journal(Base):
+    """复盘日记表 - 记录每日思考与操作"""
+    __tablename__ = 'journal'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    date = Column(Date, nullable=False, index=True)
+    content = Column(Text, nullable=False)   # 日记内容
+    tags = Column(String(200), nullable=True) # 标签
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<Journal(date={self.date}, content={self.content[:20]}...)>"
 
     def to_dict(self):
         return {c.name: getattr(self, c.name) for c in self.__table__.columns}
