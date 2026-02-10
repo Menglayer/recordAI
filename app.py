@@ -10,19 +10,10 @@ from src.models import Base, get_engine
 from src import lang as L
 from src import styles as S
 
-# Import modules
-from src.database import (
-    save_snapshots_batch, save_transfer,
-    get_recent_snapshots, get_recent_transfers,
-    get_unique_accounts, get_latest_snapshot_date
-)
-from src.calculations import (
-    calculate_current_net_worth, calculate_transfers_summary,
-    calculate_pnl, calculate_time_based_returns,
-    get_net_worth_history, get_benchmark_history, get_benchmark_roi
-)
+from src.calculations import calculate_current_net_worth
+from src.database import get_latest_snapshot_date
 from src.auth import check_password
-from src.utils import get_fx_rate, format_val, clear_data_cache
+from src.utils import get_fx_rate, clear_data_cache
 
 # Import pages
 from pages.dashboard import show_dashboard
@@ -151,37 +142,17 @@ def main():
             fx_rate=fx_rate,
             cur_sym=cur_sym,
             dark_mode=dark_mode,
-            calculate_current_net_worth=calculate_current_net_worth,
-            calculate_transfers_summary=calculate_transfers_summary,
-            calculate_pnl=calculate_pnl,
-            calculate_time_based_returns=calculate_time_based_returns,
-            get_benchmark_roi=get_benchmark_roi,
-            get_net_worth_history=get_net_worth_history,
-            get_benchmark_history=get_benchmark_history,
-            format_val=format_val
         )
     elif page == L.NAV_ENTRY:
-        show_data_entry_page(
-            engine=engine,
-            clear_data_cache=clear_data_cache,
-            get_unique_accounts=get_unique_accounts,
-            calculate_current_net_worth=calculate_current_net_worth,
-            save_snapshots_batch=save_snapshots_batch,
-            save_transfer=save_transfer
-        )
+        show_data_entry_page(engine=engine)
     elif page == L.NAV_PRICES:
-        show_price_page(engine=engine, clear_data_cache=clear_data_cache)
+        show_price_page(engine=engine)
     elif page == L.NAV_DATA:
-        show_data_view_page(
-            engine=engine,
-            clear_data_cache=clear_data_cache,
-            get_unique_accounts=get_unique_accounts,
-            get_recent_snapshots=get_recent_snapshots,
-            get_recent_transfers=get_recent_transfers
-        )
+        show_data_view_page(engine=engine)
 
 
 
 # Entry Point
 if __name__ == '__main__':
     main()
+

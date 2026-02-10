@@ -11,10 +11,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 from src import lang as L
-
-
-# 现代配色方案
-MODERN_COLORS = ['#10B981', '#F97316', '#0EA5E9', '#6366F1', '#F59E0B', '#EC4899', '#8B5CF6', '#14B8A6', '#F43F5E']
+from src.styles import MODERN_COLORS
 
 
 def get_chart_theme(dark_mode: bool) -> Dict[str, str]:

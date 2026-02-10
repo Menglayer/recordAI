@@ -57,17 +57,8 @@ def clear_data_cache():
     get_benchmark_roi.clear()
 
 
-# Modern color palette
-MODERN_COLORS = [
-    '#10B981',  # Emerald
-    '#3B82F6',  # Blue
-    '#8B5CF6',  # Purple
-    '#F59E0B',  # Amber
-    '#EF4444',  # Red
-    '#06B6D4',  # Cyan
-    '#EC4899',  # Pink
-    '#6366F1',  # Indigo
-]
+# Re-export from styles for backward compatibility
+from src.styles import MODERN_COLORS  # noqa: F401
 
 
 @st.cache_data(ttl=300)  # 缓存5分钟
@@ -93,23 +84,21 @@ def get_realtime_btc_price():
     
     # 2. Fallback: 尝试从数据库获取最新价格
     try:
-        from src.models import PriceHistory, get_session, get_engine
+        from src.models import PriceHistory, get_engine
+        from src.database import session_scope
         from sqlalchemy import desc
         import os
         
         db_url = os.getenv("DB_URL") or 'local_ledger.db'
         engine = get_engine(db_url)
-        session = get_session(engine)
         
-        try:
+        with session_scope(engine) as session:
             btc_record = session.query(PriceHistory).filter(
                 PriceHistory.symbol == 'BTC'
             ).order_by(desc(PriceHistory.date)).first()
             
             if btc_record and btc_record.price_usd > 0:
                 return btc_record.price_usd
-        finally:
-            session.close()
     except Exception as e:
         print(f"⚠️ 数据库获取BTC价格失败: {e}")
     

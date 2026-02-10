@@ -6,6 +6,12 @@ Version: 2026-02-09 v5 - Dark Mode + Performance
 
 import streamlit as st
 
+# 统一配色方案（Single source of truth）
+MODERN_COLORS = [
+    '#10B981', '#F97316', '#0EA5E9', '#6366F1', '#F59E0B',
+    '#EC4899', '#8B5CF6', '#14B8A6', '#F43F5E'
+]
+
 def apply_custom_design(dark_mode=False):
     """Apply custom design with optional dark mode"""
     

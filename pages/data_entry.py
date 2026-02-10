@@ -6,11 +6,16 @@ import pandas as pd
 from datetime import date
 from sqlalchemy import and_
 
-from src.models import Snapshot, get_session
+from src.models import Snapshot
+from src.database import (
+    session_scope, save_snapshots_batch, save_transfer, get_unique_accounts
+)
+from src.calculations import calculate_current_net_worth
+from src.utils import clear_data_cache
 from src import lang as L
 
 
-def show_data_entry_page(engine, clear_data_cache, get_unique_accounts, calculate_current_net_worth, save_snapshots_batch, save_transfer):
+def show_data_entry_page(engine):
     """Data entry page"""
     
     st.markdown("---")
@@ -83,8 +88,7 @@ def show_data_entry_page(engine, clear_data_cache, get_unique_accounts, calculat
                         st.session_state['_prev_account'] = account_name
                         
                         # Load holdings for this account
-                        session = get_session(engine)
-                        try:
+                        with session_scope(engine) as session:
                             latest = session.query(Snapshot).filter(
                                 Snapshot.account_name == account_name
                             ).order_by(Snapshot.date.desc()).first()
@@ -104,8 +108,6 @@ def show_data_entry_page(engine, clear_data_cache, get_unique_accounts, calculat
                                         'Quantity': [h.quantity for h in latest_holdings] + [0.0]
                                     })
                                     st.toast(f"📥 已加载 {account_name} 的 {len(latest_holdings)} 条持仓", icon="✅")
-                        finally:
-                            session.close()
                 else:
                     account_name = st.text_input(
                         L.ENTRY_ACCOUNT_NAME,
@@ -190,14 +192,13 @@ def show_data_entry_page(engine, clear_data_cache, get_unique_accounts, calculat
                         count = save_snapshots_batch(engine, snapshot_date, account_name, valid_rows)
                         
                         # 2. Auto carry-forward other accounts from previous date
-                        session = get_session(engine)
-                        try:
+                        carried_count = 0
+                        with session_scope(engine) as session:
                             # Find accounts that exist on previous dates but not on current date
                             prev_date = session.query(Snapshot.date).filter(
                                 Snapshot.date < snapshot_date
                             ).order_by(Snapshot.date.desc()).first()
                             
-                            carried_count = 0
                             if prev_date:
                                 # Get all accounts from previous date
                                 prev_snapshots = session.query(Snapshot).filter(
@@ -227,12 +228,9 @@ def show_data_entry_page(engine, clear_data_cache, get_unique_accounts, calculat
                                         )
                                         session.add(new_snap)
                                         carried_count += 1
-                                
-                                if carried_count > 0:
-                                    session.commit()
-                                    clear_data_cache()
-                        finally:
-                            session.close()
+                            
+                            if carried_count > 0:
+                                clear_data_cache()
                         
                         # Show success message
                         msg = L.ENTRY_SAVED_N.format(count)

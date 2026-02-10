@@ -3,8 +3,7 @@ MyLedger - 数据模型定义
 使用 SQLAlchemy ORM 定义三张核心表
 """
 from sqlalchemy import Column, Integer, String, Float, Date, DateTime, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
 Base = declarative_base()

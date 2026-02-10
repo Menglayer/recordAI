@@ -2,14 +2,22 @@
 Dashboard Main Entry Point
 Dashboard 主入口，整合所有组件
 """
-from typing import Callable, Optional
 from datetime import date, timedelta
 
 import streamlit as st
 import pandas as pd
 
 from src import lang as L
-from src.utils import get_realtime_btc_price
+from src.utils import get_realtime_btc_price, format_val
+from src.calculations import (
+    calculate_current_net_worth,
+    calculate_transfers_summary,
+    calculate_pnl,
+    calculate_time_based_returns,
+    get_benchmark_roi,
+    get_net_worth_history,
+    get_benchmark_history,
+)
 
 from pages.dashboard.metrics import (
     render_net_worth_card,
@@ -31,14 +39,6 @@ def show_dashboard(
     fx_rate: float = 1.0,
     cur_sym: str = "$",
     dark_mode: bool = False,
-    calculate_current_net_worth: Callable = None,
-    calculate_transfers_summary: Callable = None,
-    calculate_pnl: Callable = None,
-    calculate_time_based_returns: Callable = None,
-    get_benchmark_roi: Callable = None,
-    get_net_worth_history: Callable = None,
-    get_benchmark_history: Callable = None,
-    format_val: Callable = None
 ) -> None:
     """
     Dashboard 主页面
@@ -49,14 +49,6 @@ def show_dashboard(
         fx_rate: 汇率
         cur_sym: 货币符号
         dark_mode: 深色模式开关
-        calculate_current_net_worth: 计算当前净值函数
-        calculate_transfers_summary: 计算转账汇总函数
-        calculate_pnl: 计算盈亏函数
-        calculate_time_based_returns: 计算时间收益率函数
-        get_benchmark_roi: 获取基准 ROI 函数
-        get_net_worth_history: 获取净值历史函数
-        get_benchmark_history: 获取基准历史函数
-        format_val: 格式化值函数
     """
     st.markdown("---")
     

@@ -4,11 +4,16 @@ Data view page - View and manage raw data
 import streamlit as st
 import pandas as pd
 
-from src.models import Snapshot, Transfer, PriceHistory, get_session
+from src.models import Snapshot, Transfer, PriceHistory
+from src.database import (
+    session_scope, get_unique_accounts,
+    get_recent_snapshots, get_recent_transfers
+)
+from src.utils import clear_data_cache
 from src import lang as L
 
 
-def show_data_view_page(engine, clear_data_cache, get_unique_accounts, get_recent_snapshots, get_recent_transfers):
+def show_data_view_page(engine):
     """Data view page"""
     
     st.markdown("---")
@@ -71,8 +76,7 @@ def show_data_view_page(engine, clear_data_cache, get_unique_accounts, get_recen
     export_col1, export_col2, export_col3, _ = st.columns([1, 1, 1, 1])
     
     with export_col1:
-        session = get_session(engine)
-        try:
+        with session_scope(engine) as session:
             all_snapshots = session.query(Snapshot).order_by(Snapshot.date.desc()).all()
             if all_snapshots:
                 snapshot_df = pd.DataFrame([{
@@ -89,12 +93,9 @@ def show_data_view_page(engine, clear_data_cache, get_unique_accounts, get_recen
                     "text/csv",
                     use_container_width=True
                 )
-        finally:
-            session.close()
     
     with export_col2:
-        session = get_session(engine)
-        try:
+        with session_scope(engine) as session:
             all_transfers = session.query(Transfer).order_by(Transfer.date.desc()).all()
             if all_transfers:
                 transfer_df = pd.DataFrame([{
@@ -111,12 +112,9 @@ def show_data_view_page(engine, clear_data_cache, get_unique_accounts, get_recen
                     "text/csv",
                     use_container_width=True
                 )
-        finally:
-            session.close()
     
     with export_col3:
-        session = get_session(engine)
-        try:
+        with session_scope(engine) as session:
             all_prices = session.query(PriceHistory).order_by(PriceHistory.date.desc()).all()
             if all_prices:
                 price_df = pd.DataFrame([{
@@ -133,8 +131,6 @@ def show_data_view_page(engine, clear_data_cache, get_unique_accounts, get_recen
                     "text/csv",
                     use_container_width=True
                 )
-        finally:
-            session.close()
     
     # 完整备份区域
     st.markdown("---")
@@ -144,11 +140,10 @@ def show_data_view_page(engine, clear_data_cache, get_unique_accounts, get_recen
     backup_col1, backup_col2, _ = st.columns([1, 1, 2])
     
     # 生成备份数据
-    session = get_session(engine)
-    try:
-        import json
-        from datetime import datetime
-        
+    import json
+    from datetime import datetime
+    
+    with session_scope(engine) as session:
         # 获取所有数据
         all_snapshots = session.query(Snapshot).all()
         all_transfers = session.query(Transfer).all()
@@ -245,9 +240,6 @@ def show_data_view_page(engine, clear_data_cache, get_unique_accounts, get_recen
             f"转账 {len(all_transfers)} 条 · "
             f"价格 {len(all_prices)} 条"
         )
-        
-    finally:
-        session.close()
     
     st.markdown("---")
     
@@ -287,8 +279,7 @@ def show_data_view_page(engine, clear_data_cache, get_unique_accounts, get_recen
     
     with tab3:
         st.subheader(L.VIEW_RECENT + " " + L.VIEW_PRICES)
-        session = get_session(engine)
-        try:
+        with session_scope(engine) as session:
             prices = session.query(PriceHistory).order_by(
                 PriceHistory.date.desc()
             ).limit(50).all()
@@ -304,5 +295,3 @@ def show_data_view_page(engine, clear_data_cache, get_unique_accounts, get_recen
                 st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
             else:
                 st.info(L.VIEW_NO_DATA)
-        finally:
-            session.close()

@@ -6,12 +6,14 @@ import pandas as pd
 from datetime import date, datetime
 from sqlalchemy import and_
 
-from src.models import Snapshot, PriceHistory, get_session
+from src.models import Snapshot, PriceHistory
+from src.database import session_scope
 from src import price_service
+from src.utils import clear_data_cache
 from src import lang as L
 
 
-def show_price_page(engine, clear_data_cache):
+def show_price_page(engine):
     """Price update page"""
     
     st.markdown("---")
@@ -22,12 +24,9 @@ def show_price_page(engine, clear_data_cache):
     with tab1:
         st.subheader(L.PRICE_AUTO)
         
-        session_db = get_session(engine)
-        try:
-            snapshots = session_db.query(Snapshot.symbol).distinct().order_by(Snapshot.symbol).all()
+        with session_scope(engine) as session:
+            snapshots = session.query(Snapshot.symbol).distinct().order_by(Snapshot.symbol).all()
             symbols_from_snapshots = [s[0] for s in snapshots]
-        finally:
-            session_db.close()
         
         if not symbols_from_snapshots:
             st.warning(L.PRICE_NO_SNAPSHOTS)
@@ -62,9 +61,8 @@ def show_price_page(engine, clear_data_cache):
                             st.success(L.PRICE_UPDATED_N.format(count))
                             st.balloons()
                             
-                            session_db = get_session(engine)
-                            try:
-                                prices = session_db.query(PriceHistory).filter(
+                            with session_scope(engine) as session:
+                                prices = session.query(PriceHistory).filter(
                                     PriceHistory.date == date.today()
                                 ).all()
                                 
@@ -76,8 +74,6 @@ def show_price_page(engine, clear_data_cache):
                                     } for p in prices]
                                     
                                     st.dataframe(pd.DataFrame(price_data), use_container_width=True, hide_index=True)
-                            finally:
-                                session_db.close()
                             
                         except Exception as e:
                             st.error(f"{L.PRICE_FETCH_FAILED}: {e}")
@@ -117,34 +113,31 @@ def show_price_page(engine, clear_data_cache):
                 elif price_usd <= 0:
                     st.error(L.PRICE_GT0)
                 else:
-                    session = get_session(engine)
                     try:
-                        existing = session.query(PriceHistory).filter(
-                            and_(
-                                PriceHistory.date == price_date,
-                                PriceHistory.symbol == symbol
-                            )
-                        ).first()
+                        with session_scope(engine) as session:
+                            existing = session.query(PriceHistory).filter(
+                                and_(
+                                    PriceHistory.date == price_date,
+                                    PriceHistory.symbol == symbol
+                                )
+                            ).first()
+                            
+                            if existing:
+                                existing.price_usd = price_usd
+                                existing.source = 'manual'
+                                existing.created_at = datetime.utcnow()
+                            else:
+                                new_price = PriceHistory(
+                                    date=price_date,
+                                    symbol=symbol,
+                                    price_usd=price_usd,
+                                    source='manual'
+                                )
+                                session.add(new_price)
                         
-                        if existing:
-                            existing.price_usd = price_usd
-                            existing.source = 'manual'
-                            existing.created_at = datetime.utcnow()
-                        else:
-                            new_price = PriceHistory(
-                                date=price_date,
-                                symbol=symbol,
-                                price_usd=price_usd,
-                                source='manual'
-                            )
-                            session.add(new_price)
-                        
-                        session.commit()
                         clear_data_cache()
                         st.success(L.PRICE_SAVED.format(symbol, price_usd))
                         
                     except Exception as e:
-                        session.rollback()
                         st.error(f"{L.PRICE_SAVE_FAILED}: {e}")
-                    finally:
-                        session.close()
+

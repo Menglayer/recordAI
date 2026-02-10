@@ -3,6 +3,7 @@ Database operations module
 提供数据库连接、会话管理和 CRUD 操作
 """
 from contextlib import contextmanager
+from functools import lru_cache
 from typing import Optional, List, Generator, Any
 
 import streamlit as st
@@ -14,6 +15,12 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.models import Snapshot, Transfer, PriceHistory
+
+
+@lru_cache(maxsize=4)
+def _get_session_factory(engine: Engine) -> sessionmaker:
+    """缓存 sessionmaker 工厂，避免每次调用都重新创建"""
+    return sessionmaker(bind=engine)
 
 
 @contextmanager
@@ -32,8 +39,8 @@ def session_scope(engine: Engine) -> Generator[Session, None, None]:
         with session_scope(engine) as session:
             snapshots = session.query(Snapshot).all()
     """
-    Session = sessionmaker(bind=engine)
-    session = Session()
+    factory = _get_session_factory(engine)
+    session = factory()
     try:
         yield session
         session.commit()

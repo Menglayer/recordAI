@@ -7,7 +7,8 @@ from typing import Dict, List, Optional
 import yfinance as yf
 import ccxt
 from pycoingecko import CoinGeckoAPI
-from .models import get_engine, get_session, PriceHistory
+from .models import get_engine, PriceHistory
+from .database import session_scope
 from sqlalchemy import and_
 
 
@@ -260,13 +261,12 @@ def update_price_history_db(symbols_list: List[str], db_path='local_ledger.db'):
     
     # 连接数据库
     engine = get_engine(db_path)
-    session = get_session(engine)
     
     today = date.today()
     updated_count = 0
     inserted_count = 0
     
-    try:
+    with session_scope(engine) as session:
         for symbol, price in prices.items():
             if price is None:
                 print(f"⊘ {symbol}: 跳过（获取失败）")
@@ -306,23 +306,14 @@ def update_price_history_db(symbols_list: List[str], db_path='local_ledger.db'):
                 session.add(new_price)
                 inserted_count += 1
                 print(f"+ {symbol}: 新增价格 ${price:,.2f}")
-        
-        session.commit()
-        
-        print("\n" + "=" * 60)
-        print(f"💾 数据库更新完成:")
-        print(f"  - 新增: {inserted_count} 条")
-        print(f"  - 更新: {updated_count} 条")
-        print("=" * 60 + "\n")
-        
-        return inserted_count + updated_count
-        
-    except Exception as e:
-        session.rollback()
-        print(f"\n❌ 数据库更新失败: {e}\n")
-        raise
-    finally:
-        session.close()
+    
+    print("\n" + "=" * 60)
+    print(f"💾 数据库更新完成:")
+    print(f"  - 新增: {inserted_count} 条")
+    print(f"  - 更新: {updated_count} 条")
+    print("=" * 60 + "\n")
+    
+    return inserted_count + updated_count
 
 
 def fetch_and_display_prices(symbols_list: List[str]):
