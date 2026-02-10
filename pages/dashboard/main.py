@@ -38,7 +38,6 @@ def show_dashboard(
     privacy_on: bool = False,
     fx_rate: float = 1.0,
     cur_sym: str = "$",
-    cur_sym: str = "$",
 ) -> None:
     """
     Dashboard 主页面
@@ -47,7 +46,6 @@ def show_dashboard(
         engine: 数据库引擎
         privacy_on: 隐私模式开关
         fx_rate: 汇率
-        cur_sym: 货币符号
         cur_sym: 货币符号
     """
     st.markdown("---")
