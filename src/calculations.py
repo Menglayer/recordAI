@@ -105,10 +105,8 @@ def calculate_current_net_worth(_engine: Engine) -> Dict[str, Any]:
     }
 
 
-@st.cache_data(ttl=600)
-def calculate_transfers_summary(_engine: Engine) -> Dict[str, float]:
     """
-    计算转账资金流汇总
+    计算转账资金流汇总 (SQL Aggregation Optimization)
     
     Args:
         _engine: 数据库引擎
@@ -120,18 +118,25 @@ def calculate_transfers_summary(_engine: Engine) -> Dict[str, float]:
             - net_investment: 净投资（入金 - 出金）
             - net_flow: 净现金流
     """
+    from sqlalchemy import func
+    
     with session_scope(_engine) as session:
-        transfers = session.query(Transfer).all()
+        # 使用 SQL 聚合查询
+        total_deposits = session.query(func.sum(Transfer.amount_usd)).filter(
+            Transfer.type == 'deposit'
+        ).scalar() or 0.0
         
-        total_deposits = sum(t.amount_usd for t in transfers if t.type == 'deposit')
-        total_withdrawals = sum(t.amount_usd for t in transfers if t.type == 'withdrawal')
+        total_withdrawals = session.query(func.sum(Transfer.amount_usd)).filter(
+            Transfer.type == 'withdrawal'
+        ).scalar() or 0.0
+        
         net_flow = total_deposits - total_withdrawals
         
         return {
-            'total_deposits': total_deposits,
-            'total_withdrawals': total_withdrawals,
-            'net_investment': net_flow,
-            'net_flow': net_flow
+            'total_deposits': float(total_deposits),
+            'total_withdrawals': float(total_withdrawals),
+            'net_investment': float(net_flow),
+            'net_flow': float(net_flow)
         }
 
 
@@ -245,7 +250,7 @@ def calculate_time_based_returns(_engine: Engine) -> Dict[str, Any]:
 @st.cache_data(ttl=600)
 def get_net_worth_history(_engine: Engine) -> pd.DataFrame:
     """
-    获取净值历史记录
+    获取净值历史记录 (Bulk Load Optimization)
     
     Args:
         _engine: 数据库引擎
@@ -253,20 +258,84 @@ def get_net_worth_history(_engine: Engine) -> pd.DataFrame:
     Returns:
         pd.DataFrame: 包含 date 和 net_worth 列的 DataFrame
     """
-    with session_scope(_engine) as session:
-        dates = session.query(Snapshot.date).distinct().order_by(Snapshot.date).all()
-        dates = [d[0] for d in dates]
+    from src.database import get_all_snapshots, get_all_prices
+    
+    # Bulk load snapshots and prices
+    snaps_df = get_all_snapshots(_engine)
+    prices_df = get_all_prices(_engine)
+    
+    if snaps_df.empty:
+        return pd.DataFrame()
+    
+    # Standardize column names (to_dict produces lower case keys usually)
+    # Ensure they have required columns
+    required_snap_cols = ['date', 'symbol', 'quantity']
+    required_price_cols = ['date', 'symbol', 'price_usd']
+    
+    if not all(col in snaps_df.columns for col in required_snap_cols):
+        return pd.DataFrame()
         
-        if not dates:
-            return pd.DataFrame()
+    # Prepare dataframes for merge_asof
+    # Convert dates to datetime64[ns]
+    snaps_df['date'] = pd.to_datetime(snaps_df['date'])
+    snaps_df = snaps_df.sort_values('date')
+    
+    if prices_df.empty:
+        # If no prices, all values are 0 (or handled gracefully)
+        prices_df = pd.DataFrame({'date': [], 'symbol': [], 'price_usd': []})
+    else:
+        prices_df['date'] = pd.to_datetime(prices_df['date'])
+        prices_df = prices_df.sort_values('date')
+    
+    # Loop through unique symbols present in snapshots to find their prices
+    # merge_asof requires sorting by 'on' key. We do this per symbol group effectively.
+    
+    # Strategy:
+    # 1. Get unique symbols from snapshots
+    # 2. For each symbol, filter both DFs
+    # 3. merge_asof on date
+    # 4. Concatenate results
+    
+    unique_symbols = snaps_df['symbol'].unique()
+    merged_frames = []
+    
+    for symbol in unique_symbols:
+        s_df = snaps_df[snaps_df['symbol'] == symbol].copy()
+        p_df = prices_df[prices_df['symbol'] == symbol].copy()
         
-        history = []
-        for d in dates:
-            net_worth_df = calculate_net_worth_for_date(_engine, d)
-            total = net_worth_df['value'].sum() if not net_worth_df.empty else 0
-            history.append({'date': d, 'net_worth': total})
+        if p_df.empty:
+            s_df['price_usd'] = 0.0
+        else:
+            # merge_asof: left frame (snapshots) looks for nearest past date in right frame (prices)
+            # Ensure both are sorted by date (should be already, but safety first)
+            s_df = s_df.sort_values('date')
+            p_df = p_df.sort_values('date')
+            
+            s_df = pd.merge_asof(
+                s_df, 
+                p_df[['date', 'price_usd']], 
+                on='date', 
+                direction='backward'
+            )
+            s_df['price_usd'] = s_df['price_usd'].fillna(0.0)
         
-        return pd.DataFrame(history)
+        # Calculate value
+        s_df['value'] = s_df['quantity'] * s_df['price_usd']
+        merged_frames.append(s_df)
+        
+    if not merged_frames:
+        return pd.DataFrame()
+        
+    full_df = pd.concat(merged_frames)
+    
+    # Aggregation by date
+    history = full_df.groupby('date')['value'].sum().reset_index()
+    history.columns = ['date', 'net_worth']
+    
+    # Convert datetime back to date object for consistency with other parts of app
+    history['date'] = history['date'].dt.date
+    
+    return history
 
 
 @st.cache_data(ttl=3600)

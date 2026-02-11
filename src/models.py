@@ -2,7 +2,7 @@
 MyLedger - 数据模型定义
 使用 SQLAlchemy ORM 定义三张核心表
 """
-from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Text, create_engine
+from sqlalchemy import Column, Integer, String, Float, Date, DateTime, Text, create_engine, Index
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
@@ -12,6 +12,9 @@ Base = declarative_base()
 class Snapshot(Base):
     """资产快照表 - 记录每次盘点的持仓数量"""
     __tablename__ = 'snapshots'
+    __table_args__ = (
+        Index('idx_snapshot_date_account', 'date', 'account_name'),
+    )
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     date = Column(Date, nullable=False, index=True)
@@ -48,6 +51,9 @@ class Transfer(Base):
 class PriceHistory(Base):
     """价格历史表 - 存储各资产的历史价格"""
     __tablename__ = 'price_history'
+    __table_args__ = (
+        Index('idx_price_symbol_date', 'symbol', 'date'),
+    )
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     date = Column(Date, nullable=False, index=True)

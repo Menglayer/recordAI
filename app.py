@@ -4,7 +4,8 @@ Main entry point with modular architecture
 """
 import streamlit as st
 import os
-
+import pandas as pd
+from datetime import datetime
 
 from src.models import Base, get_engine
 from src import lang as L
@@ -37,11 +38,12 @@ st.set_page_config(
 def init_connection():
     db_url = st.secrets.get("DB_URL") or os.getenv("DB_URL") or 'local_ledger.db'
     _engine = get_engine(db_url)
+    # Ensure tables and indexes are created
     Base.metadata.create_all(_engine)
     return _engine
 
 
-engine = init_connection()
+
 
 
 # Sidebar Stats Cache
@@ -62,6 +64,8 @@ def main():
     # Check password
     if not check_password():
         return
+    
+    engine = init_connection()
     
     # Sidebar
     with st.sidebar:
