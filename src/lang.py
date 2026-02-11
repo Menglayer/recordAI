@@ -5,7 +5,7 @@ Updated for Analysis Page
 """
 
 # App
-APP_TITLE = "MyLedger - 个人资产追踪工具"
+APP_TITLE = "萌の资产中台 - 个人资产追踪工具"
 APP_SUBTITLE = "追踪资产，分析投资收益"
 
 # Navigation
