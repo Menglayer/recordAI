@@ -105,6 +105,8 @@ def calculate_current_net_worth(_engine: Engine) -> Dict[str, Any]:
     }
 
 
+@st.cache_data(ttl=600)
+def calculate_transfers_summary(_engine: Engine) -> Dict[str, float]:
     """
     计算转账资金流汇总 (SQL Aggregation Optimization)
     
