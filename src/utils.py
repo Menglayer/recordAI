@@ -31,7 +31,7 @@ def clear_data_cache():
     from src.database import (
         get_recent_snapshots, get_recent_transfers, 
         get_unique_accounts, get_latest_snapshot_date, 
-        get_price_for_date, get_prices_batch
+        get_price_for_date, get_prices_batch, get_journals
     )
     from src.calculations import (
         calculate_current_net_worth, calculate_transfers_summary,
@@ -46,6 +46,7 @@ def clear_data_cache():
     get_latest_snapshot_date.clear()
     get_price_for_date.clear()
     get_prices_batch.clear()
+    get_journals.clear()
     
     # Clear calculation caches
     calculate_current_net_worth.clear()

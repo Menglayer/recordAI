@@ -413,9 +413,10 @@ def delete_price(engine: Engine, price_id: int) -> bool:
         return False
 
 
-def get_journals(engine: Engine, limit: int = 50) -> pd.DataFrame:
-    """获取复盘日记列表"""
-    with session_scope(engine) as session:
+@st.cache_data(ttl=60)
+def get_journals(_engine: Engine, limit: int = 50) -> pd.DataFrame:
+    """获取复盘日记列表（带缓存）"""
+    with session_scope(_engine) as session:
         journals = session.query(Journal).order_by(desc(Journal.date)).limit(limit).all()
         return pd.DataFrame([j.to_dict() for j in journals])
 

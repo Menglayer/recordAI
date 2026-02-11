@@ -296,7 +296,9 @@ def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.Data
     start_str = start_date.strftime('%Y-%m-%d') if isinstance(start_date, date) else str(start_date)
     end_str = (end_date + timedelta(days=1)).strftime('%Y-%m-%d') if isinstance(end_date, date) else str(end_date)
     
-    for name, ticker in benchmarks.items():
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    def fetch_single_benchmark(name, ticker):
         try:
             data = yf.download(
                 ticker, 
@@ -318,9 +320,21 @@ def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.Data
                 prices = prices.dropna()
                 
                 if len(prices) > 0:
-                    result[name] = prices
+                    return name, prices
         except Exception:
             pass
+        return name, None
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_to_name = {
+            executor.submit(fetch_single_benchmark, name, ticker): name 
+            for name, ticker in benchmarks.items()
+        }
+        
+        for future in as_completed(future_to_name):
+            name, df = future.result()
+            if df is not None:
+                result[name] = df
     
     return result
 

@@ -220,7 +220,7 @@ class PriceService:
 
     def fetch_prices(self, symbols_list: List[str]) -> Dict[str, Optional[float]]:
         """
-        批量获取多个资产的价格
+        批量获取多个资产的价格 (并行优化版)
         
         Args:
             symbols_list: 资产符号列表
@@ -228,18 +228,35 @@ class PriceService:
         Returns:
             字典 {symbol: price}
         """
-        print(f"\n📊 开始获取 {len(symbols_list)} 个资产的价格...")
+        print(f"\n📊 开始获取 {len(symbols_list)} 个资产的价格 (并行模式)...")
         print("=" * 60)
         
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        
         prices = {}
-        for symbol in symbols_list:
-            price = self.fetch_price(symbol)
-            prices[symbol.upper()] = price
-            time.sleep(0.5)  # 避免 API 限流
+        # 去重
+        unique_symbols = list(set(symbols_list))
+        
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            # 提交所有任务
+            future_to_symbol = {
+                executor.submit(self.fetch_price, symbol): symbol 
+                for symbol in unique_symbols
+            }
+            
+            # 处理结果
+            for future in as_completed(future_to_symbol):
+                symbol = future_to_symbol[future]
+                try:
+                    price = future.result()
+                    prices[symbol.upper()] = price
+                except Exception as e:
+                    print(f"✗ {symbol} 线程执行异常: {e}")
+                    prices[symbol.upper()] = None
         
         print("=" * 60)
         success_count = sum(1 for p in prices.values() if p is not None)
-        print(f"✅ 完成: {success_count}/{len(symbols_list)} 个资产获取成功\n")
+        print(f"✅ 完成: {success_count}/{len(unique_symbols)} 个资产获取成功\n")
         
         return prices
 

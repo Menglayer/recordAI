@@ -405,20 +405,47 @@ def render_monthly_heatmap(
     history_df_temp['year'] = history_df_temp['date'].dt.year
     history_df_temp['month'] = history_df_temp['date'].dt.month
     
-    # 计算月度收益
-    monthly_data = []
-    for (year, month), group in history_df_temp.groupby(['year', 'month']):
-        first_val = group['net_worth'].iloc[0]
-        last_val = group['net_worth'].iloc[-1]
-        change = last_val - first_val
-        ret = ((change) / first_val * 100) if first_val > 0 else 0
-        monthly_data.append({'year': year, 'month': month, 'return': ret, 'change': change})
+    # 计算月度收益 (Vectorized)
+    # Resample to month end, keeping the last value
+    monthly_series = history_df_temp.set_index('date').resample('M')['net_worth'].last()
     
-    monthly_df = pd.DataFrame(monthly_data)
-    
-    if monthly_df.empty:
+    if len(monthly_series) < 2:
         st.info("需要至少2个月的数据才能显示热力图")
         return
+
+    # Calculate changes and returns
+    # change = this_month - last_month
+    # return = (change / last_month) * 100
+    
+    monthly_changes = monthly_series.diff()
+    monthly_returns = monthly_series.pct_change() * 100
+    
+    # Handle the first month separately (since diff/pct_change results in NaN)
+    # First month return = (End_First_Month - Start_Of_History) / Start_Of_History
+    if not monthly_series.empty:
+        first_val_hist = history_df_temp['net_worth'].iloc[0]
+        first_val_month_end = monthly_series.iloc[0]
+        
+        first_month_change = first_val_month_end - first_val_hist
+        first_month_return = (first_month_change / first_val_hist * 100) if first_val_hist > 0 else 0
+        
+        monthly_changes.iloc[0] = first_month_change
+        monthly_returns.iloc[0] = first_month_return
+    
+    # Prepare DataFrame for heatmap
+    monthly_df = pd.DataFrame({
+        'date': monthly_series.index,
+        'return': monthly_returns,
+        'change': monthly_changes
+    })
+    # Do not dropna() anymore as we filled it
+    
+    if monthly_df.empty:
+         st.info("数据不足以计算月度收益")
+         return
+
+    monthly_df['year'] = monthly_df['date'].dt.year
+    monthly_df['month'] = monthly_df['date'].dt.month
     
     months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
     
