@@ -9,15 +9,7 @@ import pandas as pd
 
 from src import lang as L
 from src.utils import get_realtime_btc_price, format_val
-from src.calculations import (
-    calculate_current_net_worth,
-    calculate_transfers_summary,
-    calculate_pnl,
-    calculate_time_based_returns,
-    get_benchmark_roi,
-    get_net_worth_history,
-    get_benchmark_history,
-)
+import src.calculations as calculations
 
 from pages.dashboard.metrics import (
     render_net_worth_card,
@@ -53,11 +45,11 @@ def show_dashboard(
     
     # ========== 数据加载 ==========
     with st.spinner("📊 正在加载数据..."):
-        net_worth_data = calculate_current_net_worth(engine)
-        transfers_data = calculate_transfers_summary(engine)
-        pnl_data = calculate_pnl(engine)
-        time_returns = calculate_time_based_returns(engine)
-        benchmark_roi = get_benchmark_roi(engine)
+        net_worth_data = calculations.calculate_current_net_worth(engine)
+        transfers_data = calculations.calculate_transfers_summary(engine)
+        pnl_data = calculations.calculate_pnl(engine)
+        time_returns = calculations.calculate_time_based_returns(engine)
+        benchmark_roi = calculations.get_benchmark_roi(engine)
     
     # ========== 数据过滤 ==========
     archived = st.session_state.get('archived_accounts', [])
@@ -166,13 +158,13 @@ def show_dashboard(
         placeholder="选择基准指数..."
     )
     
-    history_df = get_net_worth_history(engine)
+    history_df = calculations.get_net_worth_history(engine)
     
     render_history_chart(
         history_df=history_df,
         time_filter=time_filter,
         selected_benchmarks=selected_benchmarks,
-        get_benchmark_history=get_benchmark_history,
+        get_benchmark_history=calculations.get_benchmark_history,
         fx_rate=fx_rate,
         cur_sym=cur_sym
     )
