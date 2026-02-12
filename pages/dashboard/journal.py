@@ -39,7 +39,7 @@ def render_journal_section(engine):
             <div class="u-card" style="padding: 20px; display: flex; gap: 20px;">
                 <div style="min-width: 60px; text-align: center; border-right: 2px solid #E5E7EB; padding-right: 16px;">
                     <div style="font-weight: 800; font-size: 1.3rem; color: #0F172A; font-family: 'Outfit', sans-serif;">{date_str}</div>
-                    <div style="font-size: 0.75rem; color: #94A3B8;">{year_str}</div>
+                    <div style="font-size: 0.75rem; color: #64748B;">{year_str}</div>
                     <div style="margin-top: 8px;">{tags_html}</div>
                 </div>
                 <div style="flex: 1;">

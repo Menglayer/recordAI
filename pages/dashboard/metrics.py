@@ -95,12 +95,12 @@ def render_goal_progress(
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <span class="goal-icon" style="font-size: 1.8rem;">{status_icon}</span>
                         <div>
-                            <div style="font-size: 1.1rem; font-weight: 700; color: #1F2937;">目标进度</div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A;">目标进度</div>
                             <div style="font-size: 0.8rem; color: #6B7280; margin-top: 2px;">{status_text}</div>
                         </div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 2.5rem; font-weight: 800; font-family: Outfit; background: {gradient}; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{progress_pct:.1f}%</div>
+                        <div style="font-size: 2.5rem; font-weight: 800; font-family: 'Outfit', sans-serif; background: {gradient}; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{progress_pct:.1f}%</div>
                     </div>
                 </div>
                 <div style="background: #E5E7EB; border-radius: 16px; height: 24px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); position: relative;">
@@ -110,16 +110,16 @@ def render_goal_progress(
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 14px; font-size: 0.85rem;">
                     <div style="text-align: left;">
-                        <div style="color: #9CA3AF; font-size: 0.7rem; text-transform: uppercase;">当前</div>
-                        <div style="font-weight: 700; color: #374151; font-family: Outfit;">{cur_sym}{current_nw * fx_rate:,.0f}</div>
+                        <div style="color: #64748B; font-size: 0.7rem; text-transform: uppercase;">当前</div>
+                        <div style="font-weight: 700; color: #374151; font-family: 'Outfit', sans-serif;">{cur_sym}{current_nw * fx_rate:,.0f}</div>
                     </div>
                     <div style="text-align: center;">
-                        <div style="color: #9CA3AF; font-size: 0.7rem; text-transform: uppercase;">进度</div>
+                        <div style="color: #64748B; font-size: 0.7rem; text-transform: uppercase;">进度</div>
                         <div style="font-weight: 700; color: #374151;">{progress_pct:.1f}%</div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="color: #9CA3AF; font-size: 0.7rem; text-transform: uppercase;">目标</div>
-                        <div style="font-weight: 700; color: #374151; font-family: Outfit;">{cur_sym}{goal * fx_rate:,.0f}</div>
+                        <div style="color: #64748B; font-size: 0.7rem; text-transform: uppercase;">目标</div>
+                        <div style="font-weight: 700; color: #374151; font-family: 'Outfit', sans-serif;">{cur_sym}{goal * fx_rate:,.0f}</div>
                     </div>
                 </div>
             </div>
@@ -138,7 +138,7 @@ def render_goal_progress(
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <span style="font-size: 2rem;">🎯</span>
-                        <div style="font-size: 1.1rem; font-weight: 700; color: #1F2937;">目标进度</div>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A;">目标进度</div>
                     </div>
                     <span style="font-size: 1.5rem; font-weight: 600;">••••••</span>
                 </div>

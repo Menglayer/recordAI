@@ -84,7 +84,7 @@ def show_dashboard(
     # ========== 数据日期 ==========
     st.markdown(f"""
         <div style='margin: 0 0 2rem 0; display: flex; align-items: baseline; gap: 15px;'>
-            <h2 style='margin: 0; font-size: 1.7rem;'>{L.DASH_DATA_DATE} <span style='font-family: Outfit; font-weight: 700;'>{net_worth_data['latest_date']}</span></h2>
+            <h2 style='margin: 0; font-size: 1.7rem;'>{L.DASH_DATA_DATE} <span style="font-family: 'Outfit', sans-serif; font-weight: 700;">{net_worth_data['latest_date']}</span></h2>
             <span style='color: var(--falcon-muted); font-size: 0.85rem; font-weight: 500;'>{L.DASH_BASED_ON}</span>
         </div>
     """, unsafe_allow_html=True)

@@ -255,7 +255,7 @@ def render_history_chart(
         y_padding = (y_max_pct - y_min_pct) * 0.15
         
         fig_history.update_layout(
-            title=dict(text="<b>收益率对比</b>", font=dict(size=20, family='Outfit', color='#1F2937'), x=0, xanchor='left'),
+            title=dict(text="<b>收益率对比</b>", font=dict(size=20, family='Outfit', color='#0F172A'), x=0, xanchor='left'),
             yaxis=dict(
                 title="收益率 %",
                 ticksuffix="%",
@@ -312,7 +312,7 @@ def render_history_chart(
         )
         
         fig_history.update_layout(
-            title=dict(text=f"<b>{L.CHART_NW_OVER_TIME}</b>", font=dict(size=20, family='Outfit', color='#1F2937'), x=0, xanchor='left'),
+            title=dict(text=f"<b>{L.CHART_NW_OVER_TIME}</b>", font=dict(size=20, family='Outfit', color='#0F172A'), x=0, xanchor='left'),
             yaxis=dict(
                 showgrid=True,
                 gridcolor='rgba(229, 231, 235, 0.6)',
@@ -522,7 +522,7 @@ def render_monthly_heatmap(
         zmid=0,
         text=text_matrix,
         texttemplate="%{text}",
-        textfont={"size": 13, "family": "Outfit", "color": "#1F2937"},
+        textfont={"size": 13, "family": "Outfit", "color": "#0F172A"},
         hovertext=hover_matrix,
         hovertemplate="%{hovertext}<extra></extra>",
         showscale=True,
@@ -606,22 +606,22 @@ def _render_monthly_stats(
     <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 1.5rem 0;">
         <div class="u-card" style="padding: 20px; text-align: center; {card1_style}">
             <div style="font-size: 0.75rem; color: {label1_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">平均月收益</div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: {value1_color}; font-family: Outfit; margin: 8px 0;">{avg_return:+.2f}%</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: {value1_color}; font-family: 'Outfit', sans-serif; margin: 8px 0;">{avg_return:+.2f}%</div>
             <div style="font-size: 0.8rem; color: #22C55E;">{cur_sym}{_format_change(avg_change)}/月</div>
         </div>
         <div class="u-card" style="padding: 20px; text-align: center; {card2_style}">
             <div style="font-size: 0.75rem; color: {label2_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">盈利月份</div>
-            <div style="font-size: 1.8rem; font-weight: 800; color: {value2_color}; font-family: Outfit; margin: 8px 0;">{positive_months}/{total_months}</div>
+            <div style="font-size: 1.8rem; font-weight: 800; color: {value2_color}; font-family: 'Outfit', sans-serif; margin: 8px 0;">{positive_months}/{total_months}</div>
             <div style="font-size: 0.8rem; color: #3B82F6;">胜率 {win_rate:.0f}%</div>
         </div>
         <div class="u-card" style="padding: 20px; text-align: center; {card3_style}">
             <div style="font-size: 0.75rem; color: {label3_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">🏆 最佳月份</div>
-            <div style="font-size: 1.5rem; font-weight: 800; color: {value3_color}; font-family: Outfit; margin: 8px 0;">{int(best_month['year'])}/{int(best_month['month']):02d}</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: {value3_color}; font-family: 'Outfit', sans-serif; margin: 8px 0;">{int(best_month['year'])}/{int(best_month['month']):02d}</div>
             <div style="font-size: 0.85rem; color: #10B981; font-weight: 600;">+{best_month['return']:.2f}% ({cur_sym}{_format_change(best_change)})</div>
         </div>
         <div class="u-card" style="padding: 20px; text-align: center; {card4_style}">
             <div style="font-size: 0.75rem; color: {label4_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">📉 最差月份</div>
-            <div style="font-size: 1.5rem; font-weight: 800; color: {value4_color}; font-family: Outfit; margin: 8px 0;">{int(worst_month['year'])}/{int(worst_month['month']):02d}</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: {value4_color}; font-family: 'Outfit', sans-serif; margin: 8px 0;">{int(worst_month['year'])}/{int(worst_month['month']):02d}</div>
             <div style="font-size: 0.85rem; color: {worst_detail_color}; font-weight: 600;">{worst_return_str} ({cur_sym}{_format_change(worst_change)})</div>
         </div>
     </div>
