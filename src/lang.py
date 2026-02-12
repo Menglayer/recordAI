@@ -162,6 +162,7 @@ VIEW_TRANSFERS = "转账"
 VIEW_PRICES = "价格"
 VIEW_RECENT = "最近记录"
 VIEW_NO_DATA = "暂无数据"
+VIEW_SOURCE = "来源"
 
 # Journal
 JOURNAL_TITLE = "复盘日记"
