@@ -16,8 +16,12 @@ from src import lang as L
 def show_price_page(engine):
     """Price update page"""
     
-    st.markdown("---")
-    st.header(L.PRICE_TITLE)
+    st.markdown("""
+    <div style="margin-bottom: 1.5rem;">
+        <h2 style="margin: 0;">💰 价格更新</h2>
+        <p style="color: #64748B; font-size: 0.85rem; margin-top: 4px;">获取最新资产价格</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     tab1, tab2 = st.tabs([L.PRICE_AUTO, L.PRICE_MANUAL])
     

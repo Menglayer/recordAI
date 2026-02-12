@@ -78,23 +78,34 @@ def render_goal_progress(
         glow_color = "rgba(245, 158, 11, 0.4)"
     
     if not privacy_on:
+        # Only celebrate with animation when goal is reached
+        celebrate_css = ""
+        if progress >= 1:
+            celebrate_css = """
+                @keyframes celebrate {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.1); }
+                }
+                .goal-icon { animation: celebrate 2s ease-in-out infinite; }
+            """
+        
         st.markdown(f"""
             <div class="u-card" style="padding: 1.5rem; margin: 0.5rem 0 2rem 0; position: relative; overflow: hidden;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                     <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 2rem; animation: bounce 1s infinite;">{status_icon}</span>
+                        <span class="goal-icon" style="font-size: 1.8rem;">{status_icon}</span>
                         <div>
                             <div style="font-size: 1.1rem; font-weight: 700; color: #1F2937;">目标进度</div>
                             <div style="font-size: 0.8rem; color: #6B7280; margin-top: 2px;">{status_text}</div>
                         </div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-size: 2.5rem; font-weight: 800; font-family: Outfit; background: {gradient}; -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: pulse 2s infinite;">{progress_pct:.1f}%</div>
+                        <div style="font-size: 2.5rem; font-weight: 800; font-family: Outfit; background: {gradient}; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{progress_pct:.1f}%</div>
                     </div>
                 </div>
-                <div style="background: #E5E7EB; border-radius: 16px; height: 28px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); position: relative;">
-                    <div class="progress-fill" style="background: {gradient}; width: {progress_pct}%; height: 100%; border-radius: 16px; position: relative; box-shadow: 0 0 20px {glow_color}, 0 0 40px {glow_color}; animation: glow 2s ease-in-out infinite;">
-                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.5) 50%, transparent 100%); animation: shine 2s ease-in-out infinite;"></div>
+                <div style="background: #E5E7EB; border-radius: 16px; height: 24px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); position: relative;">
+                    <div style="background: {gradient}; width: {progress_pct}%; height: 100%; border-radius: 16px; position: relative; box-shadow: 0 0 12px {glow_color}; transition: width 0.6s ease;">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); animation: shine 3s ease-in-out infinite;"></div>
                     </div>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-top: 14px; font-size: 0.85rem;">
@@ -115,21 +126,10 @@ def render_goal_progress(
             <style>
                 @keyframes shine {{
                     0% {{ transform: translateX(-100%); }}
-                    50% {{ transform: translateX(100%); }}
+                    60% {{ transform: translateX(100%); }}
                     100% {{ transform: translateX(100%); }}
                 }}
-                @keyframes glow {{
-                    0%, 100% {{ box-shadow: 0 0 15px {glow_color}, 0 0 30px {glow_color}; }}
-                    50% {{ box-shadow: 0 0 25px {glow_color}, 0 0 50px {glow_color}; }}
-                }}
-                @keyframes pulse {{
-                    0%, 100% {{ opacity: 1; }}
-                    50% {{ opacity: 0.8; }}
-                }}
-                @keyframes bounce {{
-                    0%, 100% {{ transform: translateY(0); }}
-                    50% {{ transform: translateY(-5px); }}
-                }}
+                {celebrate_css}
             </style>
         """, unsafe_allow_html=True)
     else:

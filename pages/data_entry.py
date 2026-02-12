@@ -18,8 +18,12 @@ from src import lang as L
 def show_data_entry_page(engine):
     """Data entry page"""
     
-    st.markdown("---")
-    st.header(L.ENTRY_TITLE)
+    st.markdown("""
+    <div style="margin-bottom: 1.5rem;">
+        <h2 style="margin: 0;">✏️ 数据录入</h2>
+        <p style="color: #64748B; font-size: 0.85rem; margin-top: 4px;">记录快照、转账与复盘日记</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     tab1, tab2, tab3 = st.tabs([L.ENTRY_SNAPSHOT, L.TRANSFER_TITLE, L.JOURNAL_TITLE])
     

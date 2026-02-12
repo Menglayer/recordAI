@@ -11,13 +11,18 @@ from src.database import (
 )
 from src.utils import clear_data_cache
 from src import lang as L
+from src import styles as S
 
 
 def show_data_view_page(engine):
     """Data view page"""
     
-    st.markdown("---")
-    st.header(L.VIEW_TITLE)
+    st.markdown("""
+    <div style="margin-bottom: 1.5rem;">
+        <h2 style="margin: 0;">📋 数据查看</h2>
+        <p style="color: #64748B; font-size: 0.85rem; margin-top: 4px;">查看、管理和导出您的数据</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # Initialize archived accounts in session state
     if 'archived_accounts' not in st.session_state:
@@ -49,7 +54,7 @@ def show_data_view_page(engine):
             if account_to_hide and st.button("📦 隐藏", use_container_width=True):
                 st.session_state['archived_accounts'].append(account_to_hide)
                 clear_data_cache()
-                st.success(f"✅ 已隐藏账户 {account_to_hide}（历史数据已保留）")
+                S.toast(f"✅ 已隐藏账户 {account_to_hide}", "success")
                 st.rerun()
     
     # Restore archived account
@@ -58,16 +63,22 @@ def show_data_view_page(engine):
         for acc in archived_accounts:
             restore_col1, restore_col2 = st.columns([3, 1])
             with restore_col1:
-                st.text(f"📦 {acc}")
+                st.markdown(f"""
+                <div style="display: flex; align-items: center; gap: 8px; padding: 6px 12px; background: #F8FAFC; border-radius: 8px;">
+                    <span>📦</span>
+                    <span style="font-weight: 600; color: #64748B;">{acc}</span>
+                    {S.badge("已隐藏", "gray")}
+                </div>
+                """, unsafe_allow_html=True)
             with restore_col2:
                 if st.button("🔄 恢复", key=f"restore_{acc}", use_container_width=True):
                     st.session_state['archived_accounts'].remove(acc)
                     clear_data_cache()
-                    st.success(f"✅ 已恢复账户 {acc}")
+                    S.toast(f"✅ 已恢复账户 {acc}", "success")
                     st.rerun()
     
     if not existing_accounts:
-        st.info("暂无账户数据")
+        S.empty_state("📭", "暂无账户数据", "请先在数据录入页面添加快照记录")
     
     st.markdown("---")
     
@@ -234,64 +245,160 @@ def show_data_view_page(engine):
             )
         
         # 统计信息
-        st.info(
-            f"📊 **数据统计**: "
-            f"快照 {len(all_snapshots)} 条 · "
-            f"转账 {len(all_transfers)} 条 · "
-            f"价格 {len(all_prices)} 条"
-        )
+        st.markdown(f"""
+        <div style="display: flex; gap: 12px; margin-top: 8px;">
+            {S.badge(f"📸 快照 {len(all_snapshots)} 条", "blue")}
+            {S.badge(f"💸 转账 {len(all_transfers)} 条", "green")}
+            {S.badge(f"💰 价格 {len(all_prices)} 条", "orange")}
+        </div>
+        """, unsafe_allow_html=True)
     
     st.markdown("---")
     
     tab1, tab2, tab3 = st.tabs([L.VIEW_SNAPSHOTS, L.VIEW_TRANSFERS, L.VIEW_PRICES])
     
     with tab1:
-        st.subheader(L.VIEW_RECENT + " " + L.VIEW_SNAPSHOTS)
-        snapshots = get_recent_snapshots(engine, 20)
-        
-        if not snapshots.empty:
-            data = [{
-                L.ENTRY_DATE: row['date'],
-                L.ENTRY_ACCOUNT: row['account_name'],
-                L.ENTRY_SYMBOL: row['symbol'],
-                L.ENTRY_QUANTITY: f"{row['quantity']:,.8f}".rstrip('0').rstrip('.')
-            } for _, row in snapshots.iterrows()]
-            
-            st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
-        else:
-            st.info(L.VIEW_NO_DATA)
+        _render_snapshots_tab(engine)
     
     with tab2:
-        st.subheader(L.VIEW_RECENT + " " + L.VIEW_TRANSFERS)
-        transfers = get_recent_transfers(engine, 20)
-        
-        if not transfers.empty:
-            data = [{
-                L.ENTRY_DATE: row['date'],
-                L.TRANSFER_TYPE: L.TRANSFER_DEPOSIT if row['type'] == "deposit" else L.TRANSFER_WITHDRAWAL,
-                L.TRANSFER_AMOUNT: f"${row['amount_usd']:,.2f}",
-                L.TRANSFER_NOTE: row['note'] or ''
-            } for _, row in transfers.iterrows()]
-            
-            st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
-        else:
-            st.info(L.VIEW_NO_DATA)
+        _render_transfers_tab(engine)
     
     with tab3:
-        st.subheader(L.VIEW_RECENT + " " + L.VIEW_PRICES)
-        with session_scope(engine) as session:
-            prices = session.query(PriceHistory).order_by(
-                PriceHistory.date.desc()
-            ).limit(50).all()
+        _render_prices_tab(engine)
+
+
+def _render_snapshots_tab(engine):
+    """Render snapshots tab with delete functionality"""
+    st.subheader(L.VIEW_RECENT + " " + L.VIEW_SNAPSHOTS)
+    snapshots = get_recent_snapshots(engine, 20)
+    
+    if not snapshots.empty:
+        data = [{
+            L.ENTRY_DATE: row['date'],
+            L.ENTRY_ACCOUNT: row['account_name'],
+            L.ENTRY_SYMBOL: row['symbol'],
+            L.ENTRY_QUANTITY: f"{row['quantity']:,.8f}".rstrip('0').rstrip('.')
+        } for _, row in snapshots.iterrows()]
+        
+        st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
+        
+        # Delete by date
+        with st.expander("🗑️ 删除快照记录", expanded=False):
+            st.caption("⚠️ 删除操作不可恢复，请谨慎操作")
             
-            if prices:
-                data = [{
-                    L.ENTRY_DATE: p.date,
-                    L.PRICE_SYMBOL: p.symbol,
-                    L.PRICE_PRICE: f"${p.price_usd:,.4f}",
-                    L.VIEW_SOURCE: p.source or 'manual'
-                } for p in prices]
+            with session_scope(engine) as session:
+                dates = session.query(Snapshot.date).distinct().order_by(Snapshot.date.desc()).limit(30).all()
+                date_options = [d[0] for d in dates]
+            
+            if date_options:
+                del_col1, del_col2 = st.columns([2, 1])
+                with del_col1:
+                    selected_date = st.selectbox(
+                        "选择要删除的日期",
+                        options=date_options,
+                        format_func=lambda d: str(d),
+                        key="del_snapshot_date"
+                    )
+                with del_col2:
+                    if st.button("🗑️ 删除该日期全部快照", key="del_snapshot_btn", type="primary"):
+                        with session_scope(engine) as session:
+                            count = session.query(Snapshot).filter(
+                                Snapshot.date == selected_date
+                            ).delete()
+                            clear_data_cache()
+                            S.toast(f"已删除 {selected_date} 的 {count} 条快照记录", "info")
+                            st.rerun()
+    else:
+        S.empty_state("📸", "暂无快照记录", "前往「数据录入」页面添加您的资产快照")
+
+
+def _render_transfers_tab(engine):
+    """Render transfers tab with delete functionality"""
+    st.subheader(L.VIEW_RECENT + " " + L.VIEW_TRANSFERS)
+    transfers = get_recent_transfers(engine, 20)
+    
+    if not transfers.empty:
+        data = [{
+            L.ENTRY_DATE: row['date'],
+            L.TRANSFER_TYPE: L.TRANSFER_DEPOSIT if row['type'] == "deposit" else L.TRANSFER_WITHDRAWAL,
+            L.TRANSFER_AMOUNT: f"${row['amount_usd']:,.2f}",
+            L.TRANSFER_NOTE: row['note'] or ''
+        } for _, row in transfers.iterrows()]
+        
+        st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
+        
+        # Delete single transfer
+        with st.expander("🗑️ 删除转账记录", expanded=False):
+            st.caption("⚠️ 删除操作不可恢复，请谨慎操作")
+            
+            with session_scope(engine) as session:
+                recent_transfers = session.query(Transfer).order_by(Transfer.date.desc()).limit(20).all()
+                transfer_options = {
+                    f"{t.date} | {'入金' if t.type == 'deposit' else '出金'} ${t.amount_usd:,.2f} {t.note or ''}": t.id
+                    for t in recent_transfers
+                }
+            
+            if transfer_options:
+                del_col1, del_col2 = st.columns([3, 1])
+                with del_col1:
+                    selected_transfer = st.selectbox(
+                        "选择要删除的记录",
+                        options=list(transfer_options.keys()),
+                        key="del_transfer_select"
+                    )
+                with del_col2:
+                    if st.button("🗑️ 删除", key="del_transfer_btn", type="primary"):
+                        transfer_id = transfer_options[selected_transfer]
+                        with session_scope(engine) as session:
+                            session.query(Transfer).filter(Transfer.id == transfer_id).delete()
+                            clear_data_cache()
+                            S.toast("已删除转账记录", "info")
+                            st.rerun()
+    else:
+        S.empty_state("💸", "暂无转账记录", "前往「数据录入」页面记录入金/出金")
+
+
+def _render_prices_tab(engine):
+    """Render prices tab with delete functionality"""
+    st.subheader(L.VIEW_RECENT + " " + L.VIEW_PRICES)
+    with session_scope(engine) as session:
+        prices = session.query(PriceHistory).order_by(
+            PriceHistory.date.desc()
+        ).limit(50).all()
+        
+        if prices:
+            data = [{
+                L.ENTRY_DATE: p.date,
+                L.PRICE_SYMBOL: p.symbol,
+                L.PRICE_PRICE: f"${p.price_usd:,.4f}",
+                L.VIEW_SOURCE: p.source or 'manual'
+            } for p in prices]
+            
+            st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
+            
+            # Delete prices by date
+            with st.expander("🗑️ 删除价格记录", expanded=False):
+                st.caption("⚠️ 删除操作不可恢复，请谨慎操作")
                 
-                st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
-            else:
-                st.info(L.VIEW_NO_DATA)
+                dates = session.query(PriceHistory.date).distinct().order_by(PriceHistory.date.desc()).limit(30).all()
+                date_options = [d[0] for d in dates]
+                
+                if date_options:
+                    del_col1, del_col2 = st.columns([2, 1])
+                    with del_col1:
+                        selected_date = st.selectbox(
+                            "选择要删除的日期",
+                            options=date_options,
+                            format_func=lambda d: str(d),
+                            key="del_price_date"
+                        )
+                    with del_col2:
+                        if st.button("🗑️ 删除该日期全部价格", key="del_price_btn", type="primary"):
+                            count = session.query(PriceHistory).filter(
+                                PriceHistory.date == selected_date
+                            ).delete()
+                            clear_data_cache()
+                            S.toast(f"已删除 {selected_date} 的 {count} 条价格记录", "info")
+                            st.rerun()
+        else:
+            S.empty_state("💰", "暂无价格记录", "前往「价格更新」页面获取资产价格")

@@ -8,6 +8,7 @@ import streamlit as st
 import pandas as pd
 
 from src import lang as L
+from src import styles as S
 from src.utils import get_realtime_btc_price
 from src.config import MIN_DISPLAY_VALUE, DEFAULT_NET_WORTH_GOAL
 import src.calculations as calculations
@@ -42,7 +43,13 @@ def show_dashboard(
         fx_rate: 汇率
         cur_sym: 货币符号
     """
-    st.markdown("---")
+    # Page header
+    st.markdown("""
+    <div style="margin-bottom: 1.5rem;">
+        <h2 style="margin: 0;">📊 仪表盘</h2>
+        <p style="color: #64748B; font-size: 0.85rem; margin-top: 4px;">您的资产概览与分析</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     # ========== 数据加载 ==========
     with st.spinner("📊 正在加载数据..."):

@@ -14,8 +14,9 @@ from src import styles as S
 from src.calculations import calculate_current_net_worth
 from src.database import get_latest_snapshot_date
 from src.auth import check_password
-from src.utils import get_fx_rate, clear_data_cache
+from src.utils import get_fx_rate, get_realtime_btc_price, clear_data_cache, format_val
 from src.config import DEFAULT_NET_WORTH_GOAL, SUPPORTED_CURRENCIES
+
 
 # Import pages
 from pages.dashboard import show_dashboard
@@ -44,9 +45,6 @@ def init_connection():
     return _engine
 
 
-
-
-
 # Sidebar Stats Cache
 @st.cache_data(ttl=60)
 def get_sidebar_stats(_engine):
@@ -68,76 +66,119 @@ def main():
     
     engine = init_connection()
     
+    # Apply custom design FIRST
+    S.apply_custom_design()
+    
     # Sidebar
     with st.sidebar:
-        st.markdown(f"<h1 style='font-size: 1.6rem; margin-bottom: 1.5rem;'>💰 {L.APP_TITLE.split(' - ')[0]}</h1>", unsafe_allow_html=True)
+        # ===== Logo & Branding =====
+        st.markdown("""
+        <div style="text-align: center; padding: 8px 0 20px;">
+            <div style="font-size: 2.2rem; margin-bottom: 4px;">💰</div>
+            <div style="font-size: 1.2rem; font-family: 'Outfit', sans-serif; font-weight: 800; color: #0F172A; letter-spacing: -0.02em;">萌の资产中台</div>
+            <div style="font-size: 0.72rem; color: #94A3B8; font-weight: 500; margin-top: 2px;">Personal Asset Tracker</div>
+        </div>
+        """, unsafe_allow_html=True)
         
-        # Currency selector
-        currency = st.selectbox(
-            L.SIDEBAR_CURRENCY,
-            SUPPORTED_CURRENCIES,
-            index=0
-        )
-        fx_rate, cur_sym = get_fx_rate(currency)
-        
-        # Privacy toggle
-        privacy_on = st.toggle(L.SIDEBAR_PRIVACY, value=False)
-        
-        # Apply custom design
-        S.apply_custom_design()
-        
-        st.markdown("---")
-        
-        # Goal setting
-        goal = st.number_input(
-            "🎯 目标净值 (USD)",
-            min_value=0,
-            value=st.session_state.get('net_worth_goal', DEFAULT_NET_WORTH_GOAL),
-            step=10000,
-            format="%d"
-        )
-        st.session_state['net_worth_goal'] = goal
-        
-        # One-click refresh
-        if st.button("🔄 刷新数据", use_container_width=True):
-            clear_data_cache()
-            st.rerun()
-        
-        st.markdown("---")
-        
-        # Quick stats
+        # ===== Net Worth Card =====
         try:
             stats = get_sidebar_stats(engine)
             if stats['total_net_worth'] > 0:
-                # Quick stats card
-                card_bg = 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
-                label_color = '#6B7280'
+                # Get BTC price for conversion
+                btc_price = get_realtime_btc_price()
+                btc_eq = stats['total_net_worth'] / btc_price if btc_price > 0 else 0
+                
+                # Goal progress
+                goal = st.session_state.get('net_worth_goal', DEFAULT_NET_WORTH_GOAL)
+                progress_pct = min(stats['total_net_worth'] / goal * 100, 100) if goal > 0 else 0
+                
+                currency = st.session_state.get('_currency', 'USD')
+                fx_rate_preview, cur_sym_preview = get_fx_rate(currency)
+                
+                nw_display = "••••••" if st.session_state.get('_privacy', False) else f"{cur_sym_preview}{stats['total_net_worth'] * fx_rate_preview:,.0f}"
+                btc_display = "•••• BTC" if st.session_state.get('_privacy', False) else f"≈ {btc_eq:,.4f} BTC"
                 
                 st.markdown(f"""
-                <div style='background: {card_bg}; padding: 12px; border-radius: 12px; margin-bottom: 8px;'>
-                    <div style='font-size: 0.75rem; color: {label_color};'>当前净值</div>
-                    <div style='font-size: 1.3rem; font-weight: 700; font-family: Outfit; color: #10B981;'>
-                        {"••••••" if privacy_on else f"{cur_sym}{stats['total_net_worth'] * fx_rate:,.0f}"}
+                <div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); padding: 20px; border-radius: 16px; margin-bottom: 20px; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: rgba(16,185,129,0.1); border-radius: 50%;"></div>
+                    <div style="position: absolute; bottom: -10px; left: -10px; width: 50px; height: 50px; background: rgba(99,102,241,0.1); border-radius: 50%;"></div>
+                    <div style="font-size: 0.7rem; color: #94A3B8; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">总资产净值</div>
+                    <div style="font-size: 1.6rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: #FFFFFF; margin: 6px 0 4px; letter-spacing: -0.02em;">{nw_display}</div>
+                    <div style="font-size: 0.8rem; color: #F59E0B; font-weight: 600;">🪙 {btc_display}</div>
+                    <div style="margin-top: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                            <span style="font-size: 0.68rem; color: #94A3B8;">🎯 目标进度</span>
+                            <span style="font-size: 0.68rem; color: #10B981; font-weight: 700;">{progress_pct:.0f}%</span>
+                        </div>
+                        <div style="height: 4px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+                            <div style="height: 100%; width: {progress_pct}%; background: linear-gradient(90deg, #10B981, #34D399); border-radius: 4px; transition: width 0.6s ease;"></div>
+                        </div>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
         except Exception:
             pass
         
-        st.markdown("---")
-        
-        # Navigation
+        # ===== Navigation =====
         page = st.radio(
             L.SIDEBAR_NAVIGATION,
-            [L.NAV_DASHBOARD, L.NAV_ENTRY, L.NAV_PRICES, L.NAV_DATA],
+            [
+                f"📊 {L.NAV_DASHBOARD}",
+                f"✏️ {L.NAV_ENTRY}",
+                f"💰 {L.NAV_PRICES}",
+                f"📋 {L.NAV_DATA}"
+            ],
             label_visibility="collapsed"
         )
+        # Strip emoji prefix for page routing
+        page_clean = page.split(" ", 1)[1] if " " in page else page
+        
+        st.markdown("---")
+        
+        # ===== Settings Section =====
+        with st.expander("⚙️ 设置", expanded=False):
+            # Currency selector
+            currency = st.selectbox(
+                L.SIDEBAR_CURRENCY,
+                SUPPORTED_CURRENCIES,
+                index=0,
+                key="_currency_select"
+            )
+            st.session_state['_currency'] = currency
+            
+            # Privacy toggle
+            privacy_on = st.toggle(L.SIDEBAR_PRIVACY, value=False, key="_privacy_toggle")
+            st.session_state['_privacy'] = privacy_on
+            
+            # Goal setting  
+            goal = st.number_input(
+                "🎯 目标净值 (USD)",
+                min_value=0,
+                value=st.session_state.get('net_worth_goal', DEFAULT_NET_WORTH_GOAL),
+                step=10000,
+                format="%d"
+            )
+            st.session_state['net_worth_goal'] = goal
+        
+        fx_rate, cur_sym = get_fx_rate(currency)
+        
+        # ===== Quick Actions =====
+        if st.button("🔄 刷新数据", use_container_width=True):
+            clear_data_cache()
+            st.rerun()
+        
+        # ===== Footer =====
+        st.markdown("""
+        <div style="position: fixed; bottom: 0; padding: 12px 0; width: 100%;">
+            <div style="font-size: 0.65rem; color: #CBD5E1; text-align: center;">
+                MyLedger v2.0 · Made with ❤️
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     
-    # Main content area
-    st.title(L.APP_TITLE)
-    
+    # Main content area - no more redundant title
     # Route to pages
-    if page == L.NAV_DASHBOARD:
+    if page_clean == L.NAV_DASHBOARD:
         show_dashboard(
             engine=engine,
             privacy_on=privacy_on,
@@ -145,11 +186,11 @@ def main():
             cur_sym=cur_sym,
         )
 
-    elif page == L.NAV_ENTRY:
+    elif page_clean == L.NAV_ENTRY:
         show_data_entry_page(engine=engine)
-    elif page == L.NAV_PRICES:
+    elif page_clean == L.NAV_PRICES:
         show_price_page(engine=engine)
-    elif page == L.NAV_DATA:
+    elif page_clean == L.NAV_DATA:
         show_data_view_page(engine=engine)
 
 
@@ -157,4 +198,3 @@ def main():
 # Entry Point
 if __name__ == '__main__':
     main()
-
