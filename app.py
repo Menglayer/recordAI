@@ -99,19 +99,18 @@ def main():
                 btc_display = "•••• BTC" if st.session_state.get('_privacy', False) else f"≈ {btc_eq:,.4f} BTC"
                 
                 st.markdown(f"""
-                <div style="background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); padding: 20px; border-radius: 16px; margin-bottom: 20px; position: relative; overflow: hidden;">
-                    <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: rgba(16,185,129,0.1); border-radius: 50%;"></div>
-                    <div style="position: absolute; bottom: -10px; left: -10px; width: 50px; height: 50px; background: rgba(99,102,241,0.1); border-radius: 50%;"></div>
-                    <div style="font-size: 0.7rem; color: #CBD5E1; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">总资产净值</div>
-                    <div style="font-size: 1.6rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: #FFFFFF; margin: 6px 0 4px; letter-spacing: -0.02em;">{nw_display}</div>
-                    <div style="font-size: 0.8rem; color: #FBBF24; font-weight: 600;">🪙 {btc_display}</div>
+                <div style="background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 50%, #F0F9FF 100%); padding: 20px; border-radius: 16px; margin-bottom: 20px; border: 1px solid #D1FAE5; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: rgba(16,185,129,0.08); border-radius: 50%;"></div>
+                    <div style="font-size: 0.7rem; color: #6B7280; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">总资产净值</div>
+                    <div style="font-size: 1.6rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: #0F172A; margin: 6px 0 4px; letter-spacing: -0.02em;">{nw_display}</div>
+                    <div style="font-size: 0.8rem; color: #D97706; font-weight: 600;">🪙 {btc_display}</div>
                     <div style="margin-top: 12px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span style="font-size: 0.68rem; color: #CBD5E1;">🎯 目标进度</span>
-                            <span style="font-size: 0.68rem; color: #34D399; font-weight: 700;">{progress_pct:.0f}%</span>
+                            <span style="font-size: 0.68rem; color: #6B7280;">🎯 目标进度</span>
+                            <span style="font-size: 0.68rem; color: #059669; font-weight: 700;">{progress_pct:.0f}%</span>
                         </div>
-                        <div style="height: 4px; background: rgba(255,255,255,0.15); border-radius: 4px; overflow: hidden;">
-                            <div style="height: 100%; width: {progress_pct}%; background: linear-gradient(90deg, #10B981, #34D399); border-radius: 4px; transition: width 0.6s ease;"></div>
+                        <div style="height: 4px; background: #D1FAE5; border-radius: 4px; overflow: hidden;">
+                            <div style="height: 100%; width: {progress_pct}%; background: linear-gradient(90deg, #10B981, #059669); border-radius: 4px; transition: width 0.6s ease;"></div>
                         </div>
                     </div>
                 </div>
