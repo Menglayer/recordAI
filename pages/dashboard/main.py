@@ -129,10 +129,8 @@ def show_dashboard(
         privacy_on=privacy_on
     )
     
-    st.markdown("---")
-    
-    # ========== 时间筛选器 ==========
-    st.markdown("##### 📈 数据可视化")
+    # ========== 数据可视化 ==========
+    st.markdown("""<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>📈 数据可视化</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
     filter_col1, filter_col2, _ = st.columns([1, 1, 2])
     with filter_col1:
         time_filter = st.segmented_control(
@@ -149,10 +147,8 @@ def show_dashboard(
         cur_sym=cur_sym
     )
     
-    st.markdown("---")
-    
     # ========== 历史曲线 ==========
-    st.subheader(L.CHART_HISTORY)
+    st.markdown(f"""<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>📉 {L.CHART_HISTORY}</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
     
     benchmark_options = ['S&P500', 'QQQ', 'BTC', '沪深300']
     selected_benchmarks = st.multiselect(
@@ -174,7 +170,7 @@ def show_dashboard(
         cur_sym=cur_sym
     )
     
-    st.markdown("---")
+    st.markdown("""<div style='margin: 2rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>🗓️ 月度分析</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
     
     # ========== 月度热力图 ==========
     render_monthly_heatmap(
@@ -183,7 +179,7 @@ def show_dashboard(
         cur_sym=cur_sym
     )
     
-    st.markdown("---")
+    st.markdown("""<div style='margin: 2rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>📊 持仓明细</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
     
     # ========== 持仓明细 ==========
     render_holdings_table(
@@ -192,7 +188,7 @@ def show_dashboard(
         cur_sym=cur_sym
     )
     
-    st.markdown("---")
+    st.markdown("""<div style='margin: 2rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>📝 复盘日记</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
     
     # ========== 复盘日记 ==========
     render_journal_section(engine)

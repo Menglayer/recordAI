@@ -27,8 +27,7 @@ def render_time_returns_section(
     if not time_returns.get('has_data', False):
         return
     
-    st.markdown("---")
-    st.subheader(L.TIME_RETURNS)
+    st.markdown(f"""<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>⏱️ {L.TIME_RETURNS}</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
     
     # 隐私模式辅助函数
     def mask(val):

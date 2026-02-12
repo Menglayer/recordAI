@@ -1,10 +1,12 @@
 """
 Dashboard Holdings Table Component
-持仓明细表格组件
+持仓明细表格组件（含占比可视化）
 """
 from typing import Dict, Any
 import streamlit as st
+import pandas as pd
 from src import lang as L
+from src import styles as S
 
 
 def render_holdings_table(
@@ -13,7 +15,7 @@ def render_holdings_table(
     cur_sym: str
 ) -> None:
     """
-    渲染持仓明细表格
+    渲染持仓明细表格（含占比百分比）
     
     Args:
         net_worth_data: 净值数据
@@ -23,32 +25,53 @@ def render_holdings_table(
     st.subheader(L.HOLDINGS_DETAIL)
     
     if net_worth_data['details'].empty:
-        st.info(L.HOLDINGS_NO_DATA)
+        S.empty_state("📦", L.HOLDINGS_NO_DATA, "请先在数据录入页面添加快照")
         return
     
-    details_display = net_worth_data['details'].copy()
+    details = net_worth_data['details'].copy()
+    total_value = details['value'].sum()
     
-    # 格式化数量（去除末尾零）
-    details_display['quantity'] = details_display['quantity'].apply(
-        lambda x: f"{x:,.8f}".rstrip('0').rstrip('.')
+    # 添加占比列
+    details['pct'] = (details['value'] / total_value * 100) if total_value > 0 else 0
+    
+    # 按价值降序排列
+    details = details.sort_values('value', ascending=False)
+    
+    # 格式化显示
+    display_data = []
+    for _, row in details.iterrows():
+        qty_str = f"{row['quantity']:,.8f}".rstrip('0').rstrip('.')
+        price_str = f"{cur_sym}{row['price'] * fx_rate:,.2f}"
+        value_str = f"{cur_sym}{row['value'] * fx_rate:,.2f}"
+        pct_val = row['pct']
+        
+        display_data.append({
+            L.HOLDINGS_ACCOUNT: row['account_name'],
+            L.HOLDINGS_ASSET: row['symbol'],
+            L.HOLDINGS_QTY: qty_str,
+            L.HOLDINGS_PRICE: price_str,
+            L.HOLDINGS_VALUE: value_str,
+            '占比': f"{pct_val:.1f}%"
+        })
+    
+    df = pd.DataFrame(display_data)
+    
+    st.dataframe(
+        df,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            '占比': st.column_config.ProgressColumn(
+                '占比',
+                help='该资产占总净值的百分比',
+                format='%.1f%%',
+                min_value=0,
+                max_value=100,
+            )
+        }
     )
     
-    # 格式化价格和价值
-    details_display['price'] = details_display['price'].apply(
-        lambda x: f"{cur_sym}{x * fx_rate:,.2f}"
-    )
-    details_display['value'] = details_display['value'].apply(
-        lambda x: f"{cur_sym}{x * fx_rate:,.2f}"
-    )
-    
-    # 选择并重命名列
-    details_display = details_display[['account_name', 'symbol', 'quantity', 'price', 'value']]
-    details_display.columns = [
-        L.HOLDINGS_ACCOUNT, 
-        L.HOLDINGS_ASSET, 
-        L.HOLDINGS_QTY, 
-        L.HOLDINGS_PRICE, 
-        L.HOLDINGS_VALUE
-    ]
-    
-    st.dataframe(details_display, use_container_width=True, hide_index=True)
+    # 小额资产提示
+    small_count = len(details[details['value'] < 10])
+    if small_count > 0:
+        st.caption(f"💡 已隐藏 {small_count} 个小额资产（< $10）")

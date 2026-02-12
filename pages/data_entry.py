@@ -13,6 +13,7 @@ from src.database import (
 from src.calculations import calculate_current_net_worth
 from src.utils import clear_data_cache
 from src import lang as L
+from src import styles as S
 
 
 def show_data_entry_page(engine):
@@ -241,7 +242,7 @@ def show_data_entry_page(engine):
                         if carried_count > 0:
                             msg += f" (自动继承其他账户 {carried_count} 条)"
                         st.success(msg)
-                        st.balloons()
+                        S.toast(f"✅ {msg}", "success")
                         st.session_state.snapshot_data = edited_data
                         
                     except Exception as e:
@@ -318,6 +319,6 @@ def show_data_entry_page(engine):
                      try:
                          save_journal(engine, j_date, j_content, j_tags)
                          st.success(L.JOURNAL_SAVED)
-                         st.balloons()
+                         S.toast("✅ 日记已保存！", "success")
                      except Exception as e:
                          st.error(f"保存失败: {e}")

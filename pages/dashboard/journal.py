@@ -1,7 +1,13 @@
+"""
+Dashboard Journal Section
+复盘日记展示组件
+"""
 import streamlit as st
 import pandas as pd
 from src.database import get_journals
 from src import lang as L
+from src import styles as S
+
 
 def render_journal_section(engine):
     """渲染复盘日记区域"""
@@ -11,47 +17,36 @@ def render_journal_section(engine):
         journals_df = get_journals(engine, limit=20)
         
         if journals_df.empty:
-            st.info("暂无复盘日记，请在数据录入页面添加。")
+            S.empty_state(
+                "📝", "暂无复盘日记",
+                "前往「数据录入 → 复盘日记」记录您的投资思考"
+            )
             return
-            
-        st.markdown("---")
         
-        for _, row in journals_df.iterrows():
-            with st.container():
-                col1, col2 = st.columns([1, 5])
-                
-                with col1:
-                    # 日期样式
-                    st.markdown(f"""
-                    <div style="text-align: right; padding-right: 10px; border-right: 2px solid #e5e7eb;">
-                        <div style="font-weight: 700; font-size: 1.1rem; color: #374151;">{row['date'].strftime('%m-%d')}</div>
-                        <div style="font-size: 0.8rem; color: #9ca3af;">{row['date'].year}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    
-                    # 标签
-                    if row['tags']:
-                        tags = str(row['tags']).split(',')
-                        st.markdown("<div style='text-align: right; margin-top: 8px;'>", unsafe_allow_html=True)
-                        for tag in tags:
-                             if tag.strip():
-                                 st.markdown(f"<span style='background: #f3f4f6; color: #4b5563; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; display: inline-block; margin-bottom: 4px;'>{tag.strip()}</span>", unsafe_allow_html=True)
-                        st.markdown("</div>", unsafe_allow_html=True)
-                
-                with col2:
-                    # 内容样式
-                    content = str(row['content']).replace('\n', '<br>')
-                    content = content.replace('{', '{{').replace('}', '}}')
-                    
-                    st.markdown(f"""
-                    <div style="background: rgba(255,255,255,0.05); padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6;">
-                        <div style="font-family: 'Inter', sans-serif; line-height: 1.6; color: #E2E8F0;">
-                            {content}
-                        </div>
-                    </div>
-                    """, unsafe_allow_html=True)
+        for idx, row in journals_df.iterrows():
+            date_str = row['date'].strftime('%m-%d')
+            year_str = str(row['date'].year)
+            content = str(row['content']).replace('\n', '<br>')
+            content = content.replace('{', '{{').replace('}', '}}')
             
-            st.markdown("<div style='margin-bottom: 20px;'></div>", unsafe_allow_html=True)
+            # Build tags HTML
+            tags_html = ""
+            if row['tags']:
+                tags = [t.strip() for t in str(row['tags']).split(',') if t.strip()]
+                tags_html = " ".join([S.badge(tag, "blue") for tag in tags])
+            
+            st.markdown(f"""
+            <div class="u-card" style="padding: 20px; display: flex; gap: 20px;">
+                <div style="min-width: 60px; text-align: center; border-right: 2px solid #E5E7EB; padding-right: 16px;">
+                    <div style="font-weight: 800; font-size: 1.3rem; color: #0F172A; font-family: 'Outfit', sans-serif;">{date_str}</div>
+                    <div style="font-size: 0.75rem; color: #94A3B8;">{year_str}</div>
+                    <div style="margin-top: 8px;">{tags_html}</div>
+                </div>
+                <div style="flex: 1;">
+                    <div style="font-size: 0.9rem; line-height: 1.8; color: #374151;">{content}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
             
     except Exception as e:
         st.error(f"加载日记失败: {e}")

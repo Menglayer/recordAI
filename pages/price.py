@@ -11,6 +11,7 @@ from src.database import session_scope
 from src import price_service
 from src.utils import clear_data_cache
 from src import lang as L
+from src import styles as S
 
 
 def show_price_page(engine):
@@ -63,7 +64,7 @@ def show_price_page(engine):
                             count = price_service.update_price_history_db(symbols_to_fetch, engine=engine)
                             clear_data_cache()
                             st.success(L.PRICE_UPDATED_N.format(count))
-                            st.balloons()
+                            S.toast(f"✅ {L.PRICE_UPDATED_N.format(count)}", "success")
                             
                             with session_scope(engine) as session:
                                 prices = session.query(PriceHistory).filter(
