@@ -77,35 +77,35 @@ def init_database(db_path='local_ledger.db'):
 
 def add_sample_data(engine):
     """添加示例数据（可选）"""
-    from models import get_session
+    import sys
+    sys.path.insert(0, '..')
+    from src.database import session_scope
     from datetime import date, timedelta
     
-    session = get_session(engine)
-    
     try:
-        # 示例快照数据
-        today = date.today()
-        sample_snapshots = [
-            Snapshot(date=today, account_name='Binance', symbol='BTC', quantity=0.5),
-            Snapshot(date=today, account_name='Binance', symbol='ETH', quantity=5.0),
-            Snapshot(date=today, account_name='OKX', symbol='USDT', quantity=10000.0),
-        ]
-        
-        # 示例转账记录
-        sample_transfers = [
-            Transfer(date=today - timedelta(days=30), type='deposit', amount_usd=10000.0, note='初始入金'),
-            Transfer(date=today - timedelta(days=10), type='deposit', amount_usd=5000.0, note='追加投资'),
-        ]
-        
-        # 示例价格数据
-        sample_prices = [
-            PriceHistory(date=today, symbol='BTC', price_usd=95000.0, source='yfinance'),
-            PriceHistory(date=today, symbol='ETH', price_usd=3500.0, source='yfinance'),
-            PriceHistory(date=today, symbol='USDT', price_usd=1.0, source='coingecko'),
-        ]
-        
-        session.add_all(sample_snapshots + sample_transfers + sample_prices)
-        session.commit()
+        with session_scope(engine) as session:
+            # 示例快照数据
+            today = date.today()
+            sample_snapshots = [
+                Snapshot(date=today, account_name='Binance', symbol='BTC', quantity=0.5),
+                Snapshot(date=today, account_name='Binance', symbol='ETH', quantity=5.0),
+                Snapshot(date=today, account_name='OKX', symbol='USDT', quantity=10000.0),
+            ]
+            
+            # 示例转账记录
+            sample_transfers = [
+                Transfer(date=today - timedelta(days=30), type='deposit', amount_usd=10000.0, note='初始入金'),
+                Transfer(date=today - timedelta(days=10), type='deposit', amount_usd=5000.0, note='追加投资'),
+            ]
+            
+            # 示例价格数据
+            sample_prices = [
+                PriceHistory(date=today, symbol='BTC', price_usd=95000.0, source='yfinance'),
+                PriceHistory(date=today, symbol='ETH', price_usd=3500.0, source='yfinance'),
+                PriceHistory(date=today, symbol='USDT', price_usd=1.0, source='coingecko'),
+            ]
+            
+            session.add_all(sample_snapshots + sample_transfers + sample_prices)
         
         print("\n✅ 已添加示例数据")
         print(f"  - {len(sample_snapshots)} 条快照记录")
@@ -113,10 +113,7 @@ def add_sample_data(engine):
         print(f"  - {len(sample_prices)} 条价格记录")
         
     except Exception as e:
-        session.rollback()
         print(f"\n❌ 添加示例数据失败: {e}")
-    finally:
-        session.close()
 
 
 if __name__ == '__main__':

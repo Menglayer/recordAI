@@ -3,7 +3,8 @@ Database Reset Tool
 """
 import sys
 sys.path.insert(0, '..')
-from src.models import get_engine, get_session, Snapshot, Transfer, PriceHistory
+from src.models import get_engine, Snapshot, Transfer, PriceHistory
+from src.database import session_scope
 
 def reset_database():
     """清空所有表的数据"""
@@ -33,22 +34,20 @@ def reset_database():
     
     # 执行删除
     engine = get_engine('local_ledger.db')
-    session = get_session(engine)
     
     try:
-        # 统计删除前的数据量
-        snapshot_count = session.query(Snapshot).count()
-        transfer_count = session.query(Transfer).count()
-        price_count = session.query(PriceHistory).count()
-        
-        print("\n🔄 正在删除数据...")
-        
-        # 删除所有记录
-        session.query(Snapshot).delete()
-        session.query(Transfer).delete()
-        session.query(PriceHistory).delete()
-        
-        session.commit()
+        with session_scope(engine) as session:
+            # 统计删除前的数据量
+            snapshot_count = session.query(Snapshot).count()
+            transfer_count = session.query(Transfer).count()
+            price_count = session.query(PriceHistory).count()
+            
+            print("\n🔄 正在删除数据...")
+            
+            # 删除所有记录
+            session.query(Snapshot).delete()
+            session.query(Transfer).delete()
+            session.query(PriceHistory).delete()
         
         print("\n✅ 数据库已清空！")
         print(f"\n删除统计:")
@@ -60,10 +59,7 @@ def reset_database():
         print("=" * 60)
         
     except Exception as e:
-        session.rollback()
         print(f"\n❌ 删除失败: {e}")
-    finally:
-        session.close()
 
 
 if __name__ == '__main__':

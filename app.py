@@ -15,6 +15,7 @@ from src.calculations import calculate_current_net_worth
 from src.database import get_latest_snapshot_date
 from src.auth import check_password
 from src.utils import get_fx_rate, clear_data_cache
+from src.config import DEFAULT_NET_WORTH_GOAL, SUPPORTED_CURRENCIES
 
 # Import pages
 from pages.dashboard import show_dashboard
@@ -74,7 +75,7 @@ def main():
         # Currency selector
         currency = st.selectbox(
             L.SIDEBAR_CURRENCY,
-            ["USD", "CNY", "EUR", "GBP", "JPY", "HKD", "AUD"],
+            SUPPORTED_CURRENCIES,
             index=0
         )
         fx_rate, cur_sym = get_fx_rate(currency)
@@ -91,7 +92,7 @@ def main():
         goal = st.number_input(
             "🎯 目标净值 (USD)",
             min_value=0,
-            value=st.session_state.get('net_worth_goal', 500000),
+            value=st.session_state.get('net_worth_goal', DEFAULT_NET_WORTH_GOAL),
             step=10000,
             format="%d"
         )

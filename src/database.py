@@ -9,15 +9,16 @@ from typing import Optional, List, Generator, Any
 import streamlit as st
 import pandas as pd
 from datetime import date, datetime
-from sqlalchemy import create_engine, desc
+from sqlalchemy import create_engine, desc, func
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.models import Snapshot, Transfer, PriceHistory, Journal
+from src.config import SESSION_FACTORY_CACHE_SIZE
 
 
-@lru_cache(maxsize=4)
+@lru_cache(maxsize=SESSION_FACTORY_CACHE_SIZE)
 def _get_session_factory(engine: Engine) -> sessionmaker:
     """缓存 sessionmaker 工厂，避免每次调用都重新创建"""
     return sessionmaker(bind=engine)
@@ -50,20 +51,6 @@ def session_scope(engine: Engine) -> Generator[Session, None, None]:
     finally:
         session.close()
 
-
-def get_session(engine: Engine) -> Session:
-    """
-    获取数据库会话（向后兼容）
-    建议使用 session_scope 上下文管理器替代
-    
-    Args:
-        engine: SQLAlchemy 数据库引擎
-        
-    Returns:
-        Session: 数据库会话对象
-    """
-    SessionFactory = sessionmaker(bind=engine)
-    return SessionFactory()
 
 
 def save_snapshots_batch(
@@ -306,9 +293,6 @@ def get_prices_batch(_engine: Engine, symbols: List[str], target_date: date) -> 
         return {}
     
     with session_scope(_engine) as session:
-        # 获取所有符号在目标日期或之前的价格
-        from sqlalchemy import func
-        
         # 子查询：每个符号在 target_date 之前的最新日期
         subquery = session.query(
             PriceHistory.symbol,

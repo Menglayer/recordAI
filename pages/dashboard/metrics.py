@@ -2,16 +2,16 @@
 Dashboard Metrics Components
 净值卡片、目标进度、汇总指标等组件
 """
-from typing import Callable, Optional
+from typing import Optional
 import streamlit as st
 from src import styles as S
 from src import lang as L
+from src.utils import format_val
 
 
 def render_net_worth_card(
     total_net_worth: float,
     btc_equivalent: float,
-    format_val: Callable,
     fx_rate: float,
     cur_sym: str,
     privacy_on: bool
@@ -22,7 +22,6 @@ def render_net_worth_card(
     Args:
         total_net_worth: 总净值
         btc_equivalent: BTC 等值
-        format_val: 格式化函数
         fx_rate: 汇率
         cur_sym: 货币符号
         privacy_on: 隐私模式开关
@@ -152,7 +151,6 @@ def render_summary_metrics(
     transfers_data: dict,
     pnl_data: dict,
     benchmark_roi: Optional[float],
-    format_val: Callable,
     fx_rate: float,
     cur_sym: str,
     privacy_on: bool
@@ -164,7 +162,6 @@ def render_summary_metrics(
         transfers_data: 转账汇总数据
         pnl_data: 盈亏数据
         benchmark_roi: 基准收益率
-        format_val: 格式化函数
         fx_rate: 汇率
         cur_sym: 货币符号
         privacy_on: 隐私模式开关

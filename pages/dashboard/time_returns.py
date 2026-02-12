@@ -2,15 +2,15 @@
 Dashboard Time Returns Section
 时间收益率分析组件
 """
-from typing import Callable, Dict, Any
+from typing import Dict, Any
 import streamlit as st
 from src import styles as S
 from src import lang as L
+from src.utils import format_val
 
 
 def render_time_returns_section(
     time_returns: Dict[str, Any],
-    format_val: Callable,
     fx_rate: float,
     cur_sym: str,
     privacy_on: bool
@@ -20,7 +20,6 @@ def render_time_returns_section(
     
     Args:
         time_returns: 时间收益率数据
-        format_val: 格式化函数
         fx_rate: 汇率
         cur_sym: 货币符号
         privacy_on: 隐私模式开关

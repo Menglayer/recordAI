@@ -14,6 +14,15 @@ from src import lang as L
 from src.styles import MODERN_COLORS
 
 
+def _format_change(val: float) -> str:
+    """格式化数值变化（用于月度统计展示）"""
+    if abs(val) >= 10000:
+        return f"{val/1000:+,.1f}k"
+    elif abs(val) >= 1000:
+        return f"{val:+,.0f}"
+    return f"{val:+.0f}"
+
+
 def get_chart_theme() -> Dict[str, str]:
     """获取图表主题配置"""
     return {
@@ -479,13 +488,6 @@ def render_monthly_heatmap(
     text_matrix = [[f"{v:+.1f}%" if pd.notna(v) else "" for v in row] for row in pivot.values]
     
     # 构建 hover 文本
-    def format_change(val):
-        if abs(val) >= 10000:
-            return f"{val/1000:+,.1f}k"
-        elif abs(val) >= 1000:
-            return f"{val:+,.0f}"
-        return f"{val:+.0f}"
-    
     hover_matrix = []
     for i, row in enumerate(pivot.values):
         hover_row = []
@@ -495,7 +497,7 @@ def render_monthly_heatmap(
             col_name = months_with_total[j]
             if pd.notna(v) and pd.notna(change_v):
                 change_display = change_v * fx_rate
-                change_str = format_change(change_display)
+                change_str = _format_change(change_display)
                 if col_name == '年度':
                     hover_row.append(f"<b>{year}年 全年汇总</b><br>累计收益率: {v:+.2f}%<br>累计收益额: {cur_sym}{change_str}")
                 else:
@@ -575,13 +577,6 @@ def _render_monthly_stats(
     best_month = monthly_df.loc[monthly_df['return'].idxmax()]
     worst_month = monthly_df.loc[monthly_df['return'].idxmin()]
     
-    def format_change(val):
-        if abs(val) >= 10000:
-            return f"{val/1000:+,.1f}k"
-        elif abs(val) >= 1000:
-            return f"{val:+,.0f}"
-        return f"{val:+.0f}"
-    
     best_change = best_month['change'] * fx_rate
     worst_change = worst_month['change'] * fx_rate
     win_rate = positive_months / total_months * 100 if total_months > 0 else 0
@@ -612,7 +607,7 @@ def _render_monthly_stats(
         <div class="u-card" style="padding: 20px; text-align: center; {card1_style}">
             <div style="font-size: 0.75rem; color: {label1_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">平均月收益</div>
             <div style="font-size: 1.8rem; font-weight: 800; color: {value1_color}; font-family: Outfit; margin: 8px 0;">{avg_return:+.2f}%</div>
-            <div style="font-size: 0.8rem; color: #22C55E;">{cur_sym}{format_change(avg_change)}/月</div>
+            <div style="font-size: 0.8rem; color: #22C55E;">{cur_sym}{_format_change(avg_change)}/月</div>
         </div>
         <div class="u-card" style="padding: 20px; text-align: center; {card2_style}">
             <div style="font-size: 0.75rem; color: {label2_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">盈利月份</div>
@@ -622,12 +617,12 @@ def _render_monthly_stats(
         <div class="u-card" style="padding: 20px; text-align: center; {card3_style}">
             <div style="font-size: 0.75rem; color: {label3_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">🏆 最佳月份</div>
             <div style="font-size: 1.5rem; font-weight: 800; color: {value3_color}; font-family: Outfit; margin: 8px 0;">{int(best_month['year'])}/{int(best_month['month']):02d}</div>
-            <div style="font-size: 0.85rem; color: #10B981; font-weight: 600;">+{best_month['return']:.2f}% ({cur_sym}{format_change(best_change)})</div>
+            <div style="font-size: 0.85rem; color: #10B981; font-weight: 600;">+{best_month['return']:.2f}% ({cur_sym}{_format_change(best_change)})</div>
         </div>
         <div class="u-card" style="padding: 20px; text-align: center; {card4_style}">
             <div style="font-size: 0.75rem; color: {label4_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">📉 最差月份</div>
             <div style="font-size: 1.5rem; font-weight: 800; color: {value4_color}; font-family: Outfit; margin: 8px 0;">{int(worst_month['year'])}/{int(worst_month['month']):02d}</div>
-            <div style="font-size: 0.85rem; color: {worst_detail_color}; font-weight: 600;">{worst_return_str} ({cur_sym}{format_change(worst_change)})</div>
+            <div style="font-size: 0.85rem; color: {worst_detail_color}; font-weight: 600;">{worst_return_str} ({cur_sym}{_format_change(worst_change)})</div>
         </div>
     </div>
     """, unsafe_allow_html=True)

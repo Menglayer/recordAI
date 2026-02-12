@@ -261,23 +261,24 @@ class PriceService:
         return prices
 
 
-def update_price_history_db(symbols_list: List[str], db_path='local_ledger.db'):
+def update_price_history_db(symbols_list: List[str], engine=None):
     """
     获取价格并更新到数据库
     
     Args:
         symbols_list: 资产符号列表
-        db_path: 数据库路径
+        engine: SQLAlchemy 数据库引擎（必传）
         
     Returns:
         更新/插入的记录数
     """
+    if engine is None:
+        # Fallback: 兼容独立脚本调用
+        engine = get_engine()
+    
     # 获取价格
     service = PriceService()
     prices = service.fetch_prices(symbols_list)
-    
-    # 连接数据库
-    engine = get_engine(db_path)
     
     today = date.today()
     updated_count = 0
@@ -370,7 +371,8 @@ if __name__ == '__main__':
     user_input = input("是否要将价格保存到数据库？(y/N): ")
     
     if user_input.lower() == 'y':
-        update_price_history_db(test_symbols)
+        engine = get_engine()
+        update_price_history_db(test_symbols, engine=engine)
         print("✅ 测试完成！")
     else:
         print("❌ 已取消保存")

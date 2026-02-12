@@ -3,16 +3,19 @@ Utility functions and helpers
 """
 import streamlit as st
 from src import price_service
+from src.config import (
+    CURRENCY_SYMBOLS, CACHE_TTL_LONG, CACHE_TTL_MEDIUM,
+    DEFAULT_BTC_PRICE_FALLBACK
+)
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=CACHE_TTL_LONG)
 def get_fx_rate(to_currency):
     """Get exchange rate from USD to target currency"""
     if to_currency == "USD":
         return 1.0, "$"
     
-    symbols = {"CNY": "¥", "EUR": "€", "JPY": "¥", "GBP": "£", "HKD": "HK$", "AUD": "A$"}
-    symbol = symbols.get(to_currency, to_currency + " ")
+    symbol = CURRENCY_SYMBOLS.get(to_currency, to_currency + " ")
     
     service = price_service.PriceService()
     rate = service.fetch_fx_rate(to_currency)
@@ -62,26 +65,23 @@ def clear_data_cache():
 from src.styles import MODERN_COLORS  # noqa: F401
 
 
-@st.cache_data(ttl=300)  # 缓存5分钟
+@st.cache_data(ttl=CACHE_TTL_MEDIUM)
 def get_realtime_btc_price():
     """
     实时获取BTC价格（带缓存）
-    优先从Binance获取，失败则尝试数据库历史价格
+    复用 PriceService，不再单独创建 ccxt 实例
     
     Returns:
         float: BTC价格（USD）
     """
-    import ccxt
-    
-    # 1. 尝试从 Binance 获取实时价格
+    # 1. 尝试通过 PriceService 获取实时价格
     try:
-        binance = ccxt.binance()
-        ticker = binance.fetch_ticker('BTC/USDT')
-        price = float(ticker['last'])
-        if price > 0:
+        service = price_service.PriceService()
+        price = service.fetch_price('BTC')
+        if price and price > 0:
             return price
     except Exception as e:
-        print(f"⚠️ Binance API 获取BTC价格失败: {e}")
+        print(f"⚠️ PriceService 获取BTC价格失败: {e}")
     
     # 2. Fallback: 尝试从数据库获取最新价格
     try:
@@ -103,5 +103,5 @@ def get_realtime_btc_price():
     except Exception as e:
         print(f"⚠️ 数据库获取BTC价格失败: {e}")
     
-    # 3. 最终 fallback: 返回一个合理的默认值
-    return 100000.0
+    # 3. 最终 fallback
+    return DEFAULT_BTC_PRICE_FALLBACK

@@ -8,7 +8,8 @@ import streamlit as st
 import pandas as pd
 
 from src import lang as L
-from src.utils import get_realtime_btc_price, format_val
+from src.utils import get_realtime_btc_price
+from src.config import MIN_DISPLAY_VALUE, DEFAULT_NET_WORTH_GOAL
 import src.calculations as calculations
 
 from pages.dashboard.metrics import (
@@ -62,7 +63,7 @@ def show_dashboard(
         
         # 过滤小额账户（仅用于显示）
         total_net_worth = filtered_details['value'].sum() if not filtered_details.empty else 0
-        display_details = filtered_details[filtered_details['value'] >= 10]
+        display_details = filtered_details[filtered_details['value'] >= MIN_DISPLAY_VALUE]
         
         # 重新计算显示数据
         net_worth_data = {
@@ -88,14 +89,13 @@ def show_dashboard(
     render_net_worth_card(
         total_net_worth=net_worth_data['total_net_worth'],
         btc_equivalent=btc_equivalent,
-        format_val=format_val,
         fx_rate=fx_rate,
         cur_sym=cur_sym,
         privacy_on=privacy_on
     )
     
     # ========== 目标进度 ==========
-    goal = st.session_state.get('net_worth_goal', 500000)
+    goal = st.session_state.get('net_worth_goal', DEFAULT_NET_WORTH_GOAL)
     render_goal_progress(
         current_nw=net_worth_data['total_net_worth'],
         goal=goal,
@@ -109,7 +109,6 @@ def show_dashboard(
         transfers_data=transfers_data,
         pnl_data=pnl_data,
         benchmark_roi=benchmark_roi,
-        format_val=format_val,
         fx_rate=fx_rate,
         cur_sym=cur_sym,
         privacy_on=privacy_on
@@ -118,7 +117,6 @@ def show_dashboard(
     # ========== 时间收益率 ==========
     render_time_returns_section(
         time_returns=time_returns,
-        format_val=format_val,
         fx_rate=fx_rate,
         cur_sym=cur_sym,
         privacy_on=privacy_on

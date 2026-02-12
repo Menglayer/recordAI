@@ -3,20 +3,20 @@ Data Diagnostic Tool
 """
 import sys
 sys.path.insert(0, '..')
-from src.models import get_engine, get_session, Snapshot, Transfer, PriceHistory
+from src.models import get_engine, Snapshot, Transfer, PriceHistory
+from src.database import session_scope
 from datetime import date
 
 def diagnose_data():
     """诊断数据问题"""
     engine = get_engine('local_ledger.db')
-    session = get_session(engine)
     
     print("=" * 60)
     print("🔍 MyLedger 数据诊断工具")
     print("=" * 60)
     print()
     
-    try:
+    with session_scope(engine) as session:
         # 1. 检查快照数据
         print("📸 检查快照数据...")
         snapshots = session.query(Snapshot).all()
@@ -121,9 +121,6 @@ def diagnose_data():
         print("\n" + "=" * 60)
         print("诊断完成！")
         print("=" * 60)
-        
-    finally:
-        session.close()
 
 
 if __name__ == '__main__':

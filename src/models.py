@@ -116,8 +116,3 @@ def get_engine(db_url='local_ledger.db'):
         )
     return create_engine(f'sqlite:///{db_url}', echo=False)
 
-
-def get_session(engine):
-    """创建数据库会话"""
-    Session = sessionmaker(bind=engine)
-    return Session()

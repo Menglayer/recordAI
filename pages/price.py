@@ -56,7 +56,7 @@ def show_price_page(engine):
                 else:
                     with st.spinner(L.PRICE_FETCHING.format(len(symbols_to_fetch))):
                         try:
-                            count = price_service.update_price_history_db(symbols_to_fetch)
+                            count = price_service.update_price_history_db(symbols_to_fetch, engine=engine)
                             clear_data_cache()
                             st.success(L.PRICE_UPDATED_N.format(count))
                             st.balloons()

@@ -3,7 +3,8 @@ Smart Price Update Tool
 """
 import sys
 sys.path.insert(0, '..')
-from src.models import get_engine, get_session, Snapshot, PriceHistory
+from src.models import get_engine, Snapshot, PriceHistory
+from src.database import session_scope
 from datetime import date, datetime
 from sqlalchemy import and_
 from src import price_service
@@ -16,16 +17,15 @@ def update_prices_smart():
     print("=" * 60)
     
     engine = get_engine()
-    session = get_session(engine)
     
     # 1. 获取快照中的所有资产
-    snapshots = session.query(Snapshot.symbol).distinct().all()
-    symbols = sorted([s[0] for s in snapshots])
+    with session_scope(engine) as session:
+        snapshots = session.query(Snapshot.symbol).distinct().all()
+        symbols = sorted([s[0] for s in snapshots])
     
     if not symbols:
         print("\n❌ 没有找到快照记录")
         print("   请先使用 Streamlit 录入快照数据")
-        session.close()
         return
     
     print(f"\n📋 从快照中找到 {len(symbols)} 个资产:")
@@ -93,41 +93,39 @@ def update_prices_smart():
         price_date = date.today()
         saved_count = 0
         
-        for symbol, price in success_prices.items():
-            try:
-                # 检查是否已存在
-                existing = session.query(PriceHistory).filter(
-                    and_(
-                        PriceHistory.date == price_date,
-                        PriceHistory.symbol == symbol
-                    )
-                ).first()
-                
-                if existing:
-                    existing.price_usd = price
-                    existing.source = 'manual' if symbol in failed_symbols else 'auto'
-                    existing.created_at = datetime.utcnow()
-                else:
-                    new_price = PriceHistory(
-                        date=price_date,
-                        symbol=symbol,
-                        price_usd=price,
-                        source='manual' if symbol in failed_symbols else 'auto'
-                    )
-                    session.add(new_price)
-                
-                saved_count += 1
-                
-            except Exception as e:
-                print(f"  ❌ {symbol} 保存失败: {e}")
+        with session_scope(engine) as session:
+            for symbol, price in success_prices.items():
+                try:
+                    # 检查是否已存在
+                    existing = session.query(PriceHistory).filter(
+                        and_(
+                            PriceHistory.date == price_date,
+                            PriceHistory.symbol == symbol
+                        )
+                    ).first()
+                    
+                    if existing:
+                        existing.price_usd = price
+                        existing.source = 'manual' if symbol in failed_symbols else 'auto'
+                        existing.created_at = datetime.utcnow()
+                    else:
+                        new_price = PriceHistory(
+                            date=price_date,
+                            symbol=symbol,
+                            price_usd=price,
+                            source='manual' if symbol in failed_symbols else 'auto'
+                        )
+                        session.add(new_price)
+                    
+                    saved_count += 1
+                    
+                except Exception as e:
+                    print(f"  ❌ {symbol} 保存失败: {e}")
         
-        session.commit()
         print(f"✅ 成功保存 {saved_count} 个价格！")
     
     else:
         print("\n⚠️  没有价格可以保存")
-    
-    session.close()
     
     print("\n" + "=" * 60)
     print("💡 提示：")
