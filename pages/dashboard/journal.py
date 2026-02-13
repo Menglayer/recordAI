@@ -11,7 +11,6 @@ from src import styles as S
 
 def render_journal_section(engine):
     """渲染复盘日记区域"""
-    st.subheader(f"📝 {L.JOURNAL_TITLE}")
     
     try:
         journals_df = get_journals(engine, limit=20)

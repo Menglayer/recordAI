@@ -95,8 +95,9 @@ def apply_custom_design():
         }}
 
         [data-testid="stSidebar"] div[role="radiogroup"] label[aria-checked="true"] {{
-            background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%) !important;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15) !important;
+            background: var(--falcon-primary-soft) !important;
+            border: 1px solid rgba(16, 185, 129, 0.2) !important;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1) !important;
         }}
         [data-testid="stSidebar"] div[role="radiogroup"] label[aria-checked="true"]::before {{
             content: '';
@@ -110,7 +111,7 @@ def apply_custom_design():
             border-radius: 0 4px 4px 0;
         }}
         [data-testid="stSidebar"] div[role="radiogroup"] label[aria-checked="true"] p {{
-            color: #FFFFFF !important;
+            color: #065F46 !important;
             font-weight: 600 !important;
         }}
 
@@ -150,7 +151,7 @@ def apply_custom_design():
         .m-subtitle {{
             font-size: 1.1rem;
             font-weight: 600;
-            color: #F59E0B;
+            color: var(--falcon-warning);
             margin-top: 8px;
             font-family: 'Outfit', sans-serif;
         }}

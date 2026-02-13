@@ -292,6 +292,7 @@ def show_data_entry_page(engine):
                         save_transfer(engine, transfer_date, transfer_type, amount_usd, note)
                         type_str = L.TRANSFER_DEPOSIT if transfer_type == "deposit" else L.TRANSFER_WITHDRAWAL
                         st.success(L.TRANSFER_SAVED.format(type_str, amount_usd))
+                        S.toast(f"✅ {L.TRANSFER_SAVED.format(type_str, amount_usd)}", "success")
                     except Exception as e:
                         st.error(f"{L.ENTRY_SAVE_FAILED}: {e}")
 

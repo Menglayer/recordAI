@@ -80,7 +80,7 @@ def show_data_view_page(engine):
     if not existing_accounts:
         S.empty_state("📭", "暂无账户数据", "请先在数据录入页面添加快照记录")
     
-    st.markdown("---")
+    st.markdown("""<div style='margin: 1.5rem 0 1rem; display: flex; align-items: center; gap: 12px;'><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
     
     # Export section
     st.markdown("##### 📥 数据导出")
