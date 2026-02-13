@@ -95,8 +95,9 @@ def main():
                 currency = st.session_state.get('_currency', 'USD')
                 fx_rate_preview, cur_sym_preview = get_fx_rate(currency)
                 
-                nw_display = "••••••" if st.session_state.get('_privacy', False) else f"{cur_sym_preview}{stats['total_net_worth'] * fx_rate_preview:,.0f}"
-                btc_display = "•••• BTC" if st.session_state.get('_privacy', False) else f"≈ {btc_eq:,.4f} BTC"
+                is_private = st.session_state.get('_privacy_toggle', False)
+                nw_display = "••••••" if is_private else f"{cur_sym_preview}{stats['total_net_worth'] * fx_rate_preview:,.0f}"
+                btc_display = "•••• BTC" if is_private else f"≈ {btc_eq:,.4f} BTC"
                 
                 st.markdown(f"""
                 <div style="background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 50%, #F0F9FF 100%); padding: 20px; border-radius: 16px; margin-bottom: 20px; border: 1px solid #D1FAE5; position: relative; overflow: hidden;">
@@ -147,7 +148,6 @@ def main():
             
             # Privacy toggle
             privacy_on = st.toggle(L.SIDEBAR_PRIVACY, value=False, key="_privacy_toggle")
-            st.session_state['_privacy'] = privacy_on
             
             # Goal setting  
             goal = st.number_input(
