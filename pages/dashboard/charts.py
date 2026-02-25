@@ -445,7 +445,7 @@ def render_history_chart(
         yaxis_spikecolor='rgba(148, 163, 184, 0.3)',
         yaxis_spikethickness=1,
         yaxis_spikedash='solid',
-        hovermode='x unified' if not has_benchmarks else 'closest',
+        hovermode='x unified',
         hoverlabel=dict(
             bgcolor='rgba(255, 255, 255, 0.96)',
             font_size=13,
