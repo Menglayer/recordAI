@@ -355,11 +355,12 @@ def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.Data
     """
     import yfinance as yf
     
+    # S&P500 使用多个候选 ticker，依次尝试
     benchmarks = {
-        'S&P500': '^GSPC',
-        'QQQ': 'QQQ',
-        'BTC': 'BTC-USD',
-        '沪深300': '000300.SS'
+        'S&P500': ['^GSPC', 'SPY'],   # SPY 作为备选（ETF 跟踪标普500）
+        'QQQ':    ['QQQ'],
+        'BTC':    ['BTC-USD'],
+        '沪深300': ['000300.SS'],
     }
     
     result = {}
@@ -368,43 +369,53 @@ def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.Data
     start_str = start_date.strftime('%Y-%m-%d') if isinstance(start_date, date) else str(start_date)
     end_str = (end_date + timedelta(days=1)).strftime('%Y-%m-%d') if isinstance(end_date, date) else str(end_date)
     
-    for name, ticker in benchmarks.items():
-        try:
-            data = yf.download(
-                ticker, 
-                start=start_str, 
-                end=end_str,
-                progress=False,
-                auto_adjust=True
-            )
-            
-            if data.empty:
-                continue
-            
-            # 安全提取 Close 列，兼容 MultiIndex 和普通 Index
-            if isinstance(data.columns, pd.MultiIndex):
-                # yfinance 返回 MultiIndex: ('Close', 'TICKER'), ...
-                close_series = data['Close']
-                # 如果是 DataFrame（多 ticker），取第一列；否则已经是 Series
-                if isinstance(close_series, pd.DataFrame):
-                    close_series = close_series.iloc[:, 0]
-            elif 'Close' in data.columns:
-                close_series = data['Close']
-            else:
-                print(f"✗ [Benchmark] {name}: 'Close' not found, columns={data.columns.tolist()}")
-                continue
-            
-            prices = close_series.reset_index()
-            prices.columns = ['date', 'price']
-            prices['date'] = pd.to_datetime(prices['date']).dt.date
-            prices['price'] = pd.to_numeric(prices['price'], errors='coerce')
-            prices = prices.dropna()
-            
-            if len(prices) > 0:
-                result[name] = prices
+    for name, tickers in benchmarks.items():
+        fetched = False
+        for ticker in tickers:
+            try:
+                data = yf.download(
+                    ticker, 
+                    start=start_str, 
+                    end=end_str,
+                    progress=False,
+                    auto_adjust=True,
+                    timeout=15
+                )
                 
-        except Exception as e:
-            print(f"✗ [Benchmark] {name} ({ticker}) 获取失败: {e}")
+                if data.empty:
+                    print(f"⚠ [Benchmark] {name} ({ticker}): 返回空数据，尝试下一个 ticker")
+                    continue
+                
+                # 安全提取 Close 列，兼容 MultiIndex 和普通 Index
+                if isinstance(data.columns, pd.MultiIndex):
+                    close_series = data['Close']
+                    if isinstance(close_series, pd.DataFrame):
+                        close_series = close_series.iloc[:, 0]
+                elif 'Close' in data.columns:
+                    close_series = data['Close']
+                else:
+                    print(f"✗ [Benchmark] {name} ({ticker}): 'Close' not found, columns={data.columns.tolist()}")
+                    continue
+                
+                prices = close_series.reset_index()
+                prices.columns = ['date', 'price']
+                prices['date'] = pd.to_datetime(prices['date']).dt.date
+                prices['price'] = pd.to_numeric(prices['price'], errors='coerce')
+                prices = prices.dropna()
+                
+                if len(prices) > 0:
+                    result[name] = prices
+                    fetched = True
+                    if ticker != tickers[0]:
+                        print(f"✓ [Benchmark] {name}: 使用备选 ticker {ticker} 成功获取 {len(prices)} 条数据")
+                    break
+                    
+            except Exception as e:
+                print(f"✗ [Benchmark] {name} ({ticker}) 获取失败: {e}")
+                continue
+        
+        if not fetched:
+            print(f"✗ [Benchmark] {name}: 所有 ticker 均失败")
     
     return result
 
