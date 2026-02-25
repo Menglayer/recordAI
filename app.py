@@ -164,6 +164,7 @@ def main():
         # ===== Quick Actions =====
         if st.button("🔄 刷新数据", use_container_width=True):
             clear_data_cache()
+            get_sidebar_stats.clear()
             st.rerun()
         
         # ===== Footer =====

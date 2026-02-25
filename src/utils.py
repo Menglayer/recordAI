@@ -59,6 +59,10 @@ def clear_data_cache():
     get_net_worth_history.clear()
     calculate_net_worth_for_date.clear()
     get_benchmark_roi.clear()
+    
+    # Clear sidebar-related caches (BTC price, FX rate)
+    get_realtime_btc_price.clear()
+    get_fx_rate.clear()
 
 
 # Re-export from styles for backward compatibility
@@ -68,22 +72,13 @@ from src.styles import MODERN_COLORS  # noqa: F401
 @st.cache_data(ttl=CACHE_TTL_MEDIUM)
 def get_realtime_btc_price():
     """
-    实时获取BTC价格（带缓存）
-    复用 PriceService，不再单独创建 ccxt 实例
+    获取BTC价格（带缓存）
+    优先从数据库获取（极快），API作为后备
     
     Returns:
         float: BTC价格（USD）
     """
-    # 1. 尝试通过 PriceService 获取实时价格
-    try:
-        service = price_service.PriceService()
-        price = service.fetch_price('BTC')
-        if price and price > 0:
-            return price
-    except Exception as e:
-        print(f"⚠️ PriceService 获取BTC价格失败: {e}")
-    
-    # 2. Fallback: 尝试从数据库获取最新价格
+    # 1. 优先从数据库获取最新价格（极快，不会阻塞）
     try:
         from src.models import PriceHistory, get_engine
         from src.database import session_scope
@@ -99,9 +94,22 @@ def get_realtime_btc_price():
             ).order_by(desc(PriceHistory.date)).first()
             
             if btc_record and btc_record.price_usd > 0:
+                print(f"✓ [DB Cache] BTC: ${btc_record.price_usd:,.2f}")
                 return btc_record.price_usd
     except Exception as e:
         print(f"⚠️ 数据库获取BTC价格失败: {e}")
+    
+    # 2. 数据库无数据时，尝试API（减少重试，设置超时）
+    try:
+        service = price_service.PriceService(retry_count=1, retry_delay=1)
+        # 设置较短的超时时间，避免卡住
+        if hasattr(service, 'binance'):
+            service.binance.timeout = 5000  # 5秒超时
+        price = service.fetch_price('BTC')
+        if price and price > 0:
+            return price
+    except Exception as e:
+        print(f"⚠️ PriceService 获取BTC价格失败: {e}")
     
     # 3. 最终 fallback
     return DEFAULT_BTC_PRICE_FALLBACK
