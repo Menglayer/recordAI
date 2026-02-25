@@ -215,6 +215,7 @@ def render_history_chart(
             'QQQ':    {'color': '#8B5CF6', 'dash': 'dot',     'width': 2},  # 紫色
             'BTC':    {'color': '#F59E0B', 'dash': 'dashdot', 'width': 2},  # 琥珀色
             '沪深300': {'color': '#EC4899', 'dash': 'dot',     'width': 2},  # 粉色
+            '黄金':    {'color': '#CA8A04', 'dash': 'dash',    'width': 2},  # 金色
         }
         
         start_date = history_df_converted['date'].min()

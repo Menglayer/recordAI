@@ -361,6 +361,7 @@ def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.Data
         'QQQ':    ['QQQ'],
         'BTC':    ['BTC-USD'],
         '沪深300': ['000300.SS'],
+        '黄金':    ['GC=F', 'GLD'],    # GLD 作为备选（黄金 ETF）
     }
     
     result = {}
