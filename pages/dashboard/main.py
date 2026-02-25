@@ -151,9 +151,17 @@ def show_dashboard(
     st.markdown(f"""<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>📉 {L.CHART_HISTORY}</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
     
     benchmark_options = [
-        'S&P500', 'QQQ', 'BTC', '沪深300', '黄金',
-        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA',
+        # 美股大盘
+        'S&P500', 'QQQ', '罗素2000',
+        # Magnificent 7
         'MAG7 ETF',
+        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA',
+        # 加密
+        'BTC', 'ETH',
+        # 亚洲市场
+        '沪深300', '恒生科技', '日经225',
+        # 另类资产
+        '黄金', '美债20年',
     ]
     selected_benchmarks = st.multiselect(
         "📊 对比基准",

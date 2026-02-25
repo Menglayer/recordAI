@@ -226,6 +226,12 @@ def render_history_chart(
             'TSLA':   {'color': '#E31937', 'dash': 'dash',    'width': 1.8},  # 特斯拉红
             # Magnificent 7 组合 ETF
             'MAG7 ETF': {'color': '#06B6D4', 'dash': 'solid', 'width': 2.5},  # 青色 粗实线
+            # 其他热门基准
+            'ETH':      {'color': '#627EEA', 'dash': 'dashdot', 'width': 2},    # 以太坊紫蓝
+            '罗素2000':  {'color': '#92400E', 'dash': 'dot',     'width': 1.8},  # 棕色
+            '恒生科技':  {'color': '#DC2626', 'dash': 'dash',    'width': 1.8},  # 红色
+            '美债20年':  {'color': '#4338CA', 'dash': 'dot',     'width': 2},    # 靛蓝
+            '日经225':   {'color': '#F472B6', 'dash': 'dashdot', 'width': 1.8},  # 樱花粉
         }
         
         start_date = history_df_converted['date'].min()

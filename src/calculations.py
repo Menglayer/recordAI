@@ -372,6 +372,12 @@ def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.Data
         'TSLA':   ['TSLA'],
         # ===== Magnificent 7 组合 ETF =====
         'MAG7 ETF': ['MAGS'],          # Roundhill Magnificent Seven ETF
+        # ===== 其他热门基准 =====
+        'ETH':      ['ETH-USD'],
+        '罗素2000':  ['IWM'],            # iShares Russell 2000 ETF
+        '恒生科技':  ['^HSTECH', '3067.HK'],  # 恒生科技指数 / ETF
+        '美债20年':  ['TLT'],            # iShares 20+ Year Treasury Bond ETF
+        '日经225':   ['^N225'],
     }
     
     result = {}
