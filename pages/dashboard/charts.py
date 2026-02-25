@@ -130,7 +130,7 @@ def render_history_chart(
     cur_sym: str
 ) -> None:
     """
-    渲染净值历史曲线图
+    渲染净值历史曲线图（优化版）
     
     Args:
         history_df: 历史净值 DataFrame
@@ -168,7 +168,7 @@ def render_history_chart(
     
     # 检查筛选后数据是否足够
     if len(history_df_converted) < 2:
-        st.info(f"选定时间范围内数据不足，显示全部历史数据")
+        st.info("选定时间范围内数据不足，显示全部历史数据")
         history_df_converted = history_df.copy()
         history_df_converted['net_worth'] = history_df_converted['net_worth'] * fx_rate
     
@@ -183,30 +183,51 @@ def render_history_chart(
     last_val = history_df_converted['net_worth'].iloc[-1]
     is_up = last_val >= first_val
     
+    # 使用更精致的配色
     line_color = '#10B981' if is_up else '#EF4444'
-    fill_color = 'rgba(16, 185, 129, 0.15)' if is_up else 'rgba(239, 68, 68, 0.15)'
+    fill_color_top = 'rgba(16, 185, 129, 0.18)' if is_up else 'rgba(239, 68, 68, 0.18)'
+    fill_color_bottom = 'rgba(16, 185, 129, 0.02)' if is_up else 'rgba(239, 68, 68, 0.02)'
     
     use_pct_view = len(selected_benchmarks) > 0
     
     if use_pct_view:
-        # 百分比视图模式
+        # ==================== 百分比视图模式 ====================
         history_df_converted['pct_change'] = ((history_df_converted['net_worth'] / first_val) - 1) * 100
         
+        # 渐变填充底层（组合曲线下方区域）
+        fig_history.add_trace(go.Scatter(
+            x=history_df_converted['date'],
+            y=history_df_converted['pct_change'],
+            mode='lines',
+            line=dict(color='rgba(0,0,0,0)', width=0),
+            fill='tozeroy',
+            fillcolor=fill_color_top,
+            showlegend=False,
+            hoverinfo='skip'
+        ))
+        
+        # 主组合曲线
         fig_history.add_trace(go.Scatter(
             x=history_df_converted['date'],
             y=history_df_converted['pct_change'],
             mode='lines+markers',
             name='我的组合',
-            line=dict(color=line_color, width=3, shape='spline', smoothing=1.3),
-            marker=dict(size=8, color='white', line=dict(color=line_color, width=2)),
-            hovertemplate='<b>我的组合</b><br>%{y:.2f}%<extra></extra>'
+            line=dict(color=line_color, width=3.5, shape='spline', smoothing=1.3),
+            marker=dict(
+                size=7,
+                color='white',
+                line=dict(color=line_color, width=2.5),
+                symbol='circle'
+            ),
+            hovertemplate='<b>我的组合</b>  %{y:+.2f}%<extra></extra>'
         ))
         
-        benchmark_colors = {
-            'S&P500': '#6366F1',
-            'QQQ': '#8B5CF6',
-            'BTC': '#F59E0B',
-            '沪深300': '#EF4444'
+        # 基准指数配色 — 更高对比度、更和谐的调色板
+        benchmark_styles = {
+            'S&P500': {'color': '#6366F1', 'dash': 'dash',    'width': 2.2, 'symbol': 'diamond'},
+            'QQQ':    {'color': '#8B5CF6', 'dash': 'dot',     'width': 2.2, 'symbol': 'square'},
+            'BTC':    {'color': '#F59E0B', 'dash': 'dashdot', 'width': 2.2, 'symbol': 'triangle-up'},
+            '沪深300': {'color': '#EC4899', 'dash': 'dot',     'width': 2.0, 'symbol': 'cross'},
         }
         
         start_date = history_df_converted['date'].min()
@@ -221,28 +242,48 @@ def render_history_chart(
                 
                 if len(bench_df) > 0:
                     bench_start = bench_df['price'].iloc[0]
-                    bench_df['pct_change'] = ((bench_df['price'] / bench_start) - 1) * 100
+                    if bench_start > 0:
+                        bench_df['pct_change'] = ((bench_df['price'] / bench_start) - 1) * 100
+                    else:
+                        continue
+                    
+                    style = benchmark_styles.get(bench_name, {'color': '#9CA3AF', 'dash': 'dot', 'width': 2, 'symbol': 'circle'})
+                    
+                    # 仅在首尾和关键点显示 marker
+                    marker_size = [0] * len(bench_df)
+                    if len(bench_df) > 0:
+                        marker_size[0] = 5
+                        marker_size[-1] = 5
                     
                     fig_history.add_trace(go.Scatter(
                         x=bench_df['date'],
                         y=bench_df['pct_change'],
-                        mode='lines',
+                        mode='lines+markers',
                         name=bench_name,
                         line=dict(
-                            color=benchmark_colors.get(bench_name, '#9CA3AF'),
-                            width=2,
-                            dash='dot'
+                            color=style['color'],
+                            width=style['width'],
+                            dash=style['dash']
                         ),
-                        hovertemplate=f'<b>{bench_name}</b><br>' + '%{y:.2f}%<extra></extra>'
+                        marker=dict(
+                            size=marker_size,
+                            color='white',
+                            line=dict(color=style['color'], width=1.5),
+                            symbol=style['symbol']
+                        ),
+                        hovertemplate=f'<b>{bench_name}</b>  ' + '%{y:+.2f}%<extra></extra>'
                     ))
         
-        # 显示加载状态
+        # 显示加载状态（更简洁）
         loaded = [b for b in selected_benchmarks if b in benchmark_data]
         not_loaded = [b for b in selected_benchmarks if b not in benchmark_data]
+        status_parts = []
         if loaded:
-            st.caption(f"✅ 已加载: {', '.join(loaded)}")
+            status_parts.append(f"✅ {', '.join(loaded)}")
         if not_loaded:
-            st.caption(f"⚠️ 无法获取: {', '.join(not_loaded)}")
+            status_parts.append(f"⚠️ 无法获取: {', '.join(not_loaded)}")
+        if status_parts:
+            st.caption("  ·  ".join(status_parts))
         
         # 计算 Y 轴范围
         all_pct = history_df_converted['pct_change'].tolist()
@@ -252,138 +293,203 @@ def render_history_chart(
         
         y_min_pct = min(all_pct) if all_pct else -5
         y_max_pct = max(all_pct) if all_pct else 5
-        y_padding = (y_max_pct - y_min_pct) * 0.15
+        y_range = y_max_pct - y_min_pct
+        y_padding = max(y_range * 0.18, 0.5)  # 至少 0.5% padding
         
         fig_history.update_layout(
-            title=dict(text="<b>收益率对比</b>", font=dict(size=20, family='Outfit', color='#0F172A'), x=0, xanchor='left'),
+            title=dict(
+                text="<b>收益率对比</b>",
+                font=dict(size=20, family='Outfit', color='#0F172A'),
+                x=0, xanchor='left', y=0.95
+            ),
             yaxis=dict(
-                title="收益率 %",
                 ticksuffix="%",
                 range=[y_min_pct - y_padding, y_max_pct + y_padding],
                 showgrid=True,
-                gridcolor='rgba(229, 231, 235, 0.6)',
+                gridcolor='rgba(226, 232, 240, 0.6)',
                 griddash='dot',
+                gridwidth=1,
                 zeroline=True,
-                zerolinecolor='#9CA3AF',
-                zerolinewidth=1
+                zerolinecolor='rgba(148, 163, 184, 0.6)',
+                zerolinewidth=1.5,
+                tickfont=dict(size=11, color='#94A3B8', family='Inter'),
+                side='right',
             )
         )
     else:
-        # 绝对值视图
+        # ==================== 绝对值视图 ====================
         y_min = history_df_converted['net_worth'].min()
         y_max = history_df_converted['net_worth'].max()
         y_range_padding = (y_max - y_min) * 0.15 if y_max != y_min else y_max * 0.05
         y_axis_min = max(0, y_min - y_range_padding)
         y_axis_max = y_max + y_range_padding
         
+        # 渐变填充底层
         fig_history.add_trace(go.Scatter(
             x=history_df_converted['date'],
             y=history_df_converted['net_worth'],
             mode='lines',
-            line=dict(color=line_color, width=4, shape='spline', smoothing=1.3),
+            line=dict(color='rgba(0,0,0,0)', width=0),
             fill='tozeroy',
-            fillcolor=fill_color,
+            fillcolor=fill_color_top,
             hoverinfo='skip',
             showlegend=False
         ))
         
+        # 主曲线
         fig_history.add_trace(go.Scatter(
             x=history_df_converted['date'],
             y=history_df_converted['net_worth'],
             mode='lines+markers',
             name='我的组合',
-            line=dict(color=line_color, width=3, shape='spline', smoothing=1.3),
-            marker=dict(size=10, color='white', line=dict(color=line_color, width=3)),
-            hovertemplate='<b>%{x}</b><br>' + cur_sym + '%{y:,.0f}<extra></extra>'
+            line=dict(color=line_color, width=3.5, shape='spline', smoothing=1.3),
+            marker=dict(
+                size=7,
+                color='white',
+                line=dict(color=line_color, width=2.5),
+                symbol='circle'
+            ),
+            hovertemplate='<b>%{x|%Y-%m-%d}</b><br>' + cur_sym + '%{y:,.0f}<extra></extra>'
         ))
         
-        # 添加标注
+        # 起止标注（更精致）
         fig_history.add_annotation(
             x=history_df_converted['date'].iloc[0], y=first_val,
-            text=f"{cur_sym}{first_val:,.0f}", showarrow=False, yshift=20,
-            font=dict(size=11, color='#6B7280', family='Outfit'),
-            bgcolor='rgba(255,255,255,0.8)', borderpad=4
+            text=f"{cur_sym}{first_val:,.0f}", showarrow=True,
+            arrowhead=0, arrowcolor='rgba(148,163,184,0.4)', arrowwidth=1,
+            ax=0, ay=-30,
+            font=dict(size=11, color='#94A3B8', family='Inter'),
+            bgcolor='rgba(255,255,255,0.85)', borderpad=5,
+            bordercolor='rgba(226,232,240,0.6)', borderwidth=1
         )
         fig_history.add_annotation(
             x=history_df_converted['date'].iloc[-1], y=last_val,
-            text=f"<b>{cur_sym}{last_val:,.0f}</b>", showarrow=False, yshift=25,
+            text=f"<b>{cur_sym}{last_val:,.0f}</b>", showarrow=True,
+            arrowhead=0, arrowcolor=line_color, arrowwidth=1.5,
+            ax=0, ay=-35,
             font=dict(size=13, color=line_color, family='Outfit'),
-            bgcolor='rgba(255,255,255,0.9)', borderpad=4
+            bgcolor='rgba(255,255,255,0.92)', borderpad=6,
+            bordercolor=line_color, borderwidth=1
         )
         
         fig_history.update_layout(
-            title=dict(text=f"<b>{L.CHART_NW_OVER_TIME}</b>", font=dict(size=20, family='Outfit', color='#0F172A'), x=0, xanchor='left'),
+            title=dict(
+                text=f"<b>{L.CHART_NW_OVER_TIME}</b>",
+                font=dict(size=20, family='Outfit', color='#0F172A'),
+                x=0, xanchor='left', y=0.95
+            ),
             yaxis=dict(
                 showgrid=True,
-                gridcolor='rgba(229, 231, 235, 0.6)',
+                gridcolor='rgba(226, 232, 240, 0.6)',
                 griddash='dot',
+                gridwidth=1,
                 zeroline=False,
                 range=[y_axis_min, y_axis_max],
                 tickprefix=cur_sym,
                 tickformat=',.0f',
+                tickfont=dict(size=11, color='#94A3B8', family='Inter'),
                 side='right'
             )
         )
     
-    # 通用布局
+    # ==================== 通用布局 ====================
     has_benchmarks = len(selected_benchmarks) > 0
-    chart_height = 500 if has_benchmarks else 420
+    chart_height = 480 if has_benchmarks else 420
     
     fig_history.update_layout(
         xaxis_title=None,
         yaxis_title=None,
         height=chart_height,
-        margin=dict(l=20, r=20, t=70, b=80 if has_benchmarks else 20),
+        margin=dict(l=10, r=60, t=60, b=70 if has_benchmarks else 30),
         paper_bgcolor=theme['paper_bg'],
         plot_bgcolor=theme['bg'],
         xaxis=dict(
             showgrid=False,
-            linecolor=theme['line_color'],
-            tickfont=dict(size=11, color=theme['font_color'], family='Inter'),
+            showline=True,
+            linecolor='rgba(226, 232, 240, 0.8)',
+            linewidth=1,
+            tickfont=dict(size=11, color='#94A3B8', family='Inter'),
             tickformat='%m/%d',
+            # 添加 spike line（十字准线）
+            showspikes=True,
+            spikemode='across',
+            spikesnap='cursor',
+            spikecolor='rgba(148, 163, 184, 0.3)',
+            spikethickness=1,
+            spikedash='solid',
         ),
+        yaxis_showspikes=True,
+        yaxis_spikemode='across',
+        yaxis_spikesnap='cursor',
+        yaxis_spikecolor='rgba(148, 163, 184, 0.3)',
+        yaxis_spikethickness=1,
+        yaxis_spikedash='solid',
         hovermode='x unified',
         hoverlabel=dict(
-            bgcolor='white',
-            font_size=14,
+            bgcolor='rgba(255, 255, 255, 0.96)',
+            font_size=13,
             font_family='Inter',
             font_color='#1E293B',
-            bordercolor=theme['line_color']
+            bordercolor='rgba(226, 232, 240, 0.8)',
+            namelength=-1,
         ),
         showlegend=has_benchmarks,
         legend=dict(
             orientation='h',
             yanchor='top',
-            y=-0.18,
+            y=-0.12,
             xanchor='center',
             x=0.5,
-            font=dict(size=9, family='Inter', color=theme['font_color']),
-            bgcolor='rgba(255,255,255,0.9)',
-            bordercolor=theme['line_color'],
-            borderwidth=1
-        )
+            font=dict(size=11, family='Inter', color='#475569'),
+            bgcolor='rgba(255,255,255,0)',
+            borderwidth=0,
+            itemsizing='constant',
+            itemwidth=40,
+            tracegroupgap=12,
+        ),
     )
     
-    st.plotly_chart(fig_history, use_container_width=True, config={'displayModeBar': False})
+    st.plotly_chart(fig_history, use_container_width=True, config={
+        'displayModeBar': False,
+        'scrollZoom': False,
+    })
     
-    # 统计指标
-    col_stat1, col_stat2, col_stat3 = st.columns(3)
+    # ==================== 统计指标卡片（精美版） ====================
+    max_nw = history_df_converted['net_worth'].max()
+    max_date = history_df_converted[history_df_converted['net_worth'] == max_nw]['date'].iloc[0]
+    min_nw = history_df_converted['net_worth'].min()
+    min_date = history_df_converted[history_df_converted['net_worth'] == min_nw]['date'].iloc[0]
     
-    with col_stat1:
-        max_nw = history_df_converted['net_worth'].max()
-        max_date = history_df_converted[history_df_converted['net_worth'] == max_nw]['date'].iloc[0]
-        st.metric(L.CHART_ATH, f"{cur_sym}{max_nw:,.2f}", delta=f"{max_date}")
+    growth = 0.0
+    growth_pct = 0.0
+    if len(history_df_converted) >= 2:
+        growth = history_df_converted['net_worth'].iloc[-1] - history_df_converted['net_worth'].iloc[0]
+        growth_pct = (growth / history_df_converted['net_worth'].iloc[0] * 100) if history_df_converted['net_worth'].iloc[0] > 0 else 0
     
-    with col_stat2:
-        min_nw = history_df_converted['net_worth'].min()
-        min_date = history_df_converted[history_df_converted['net_worth'] == min_nw]['date'].iloc[0]
-        st.metric(L.CHART_ATL, f"{cur_sym}{min_nw:,.2f}", delta=f"{min_date}")
+    growth_color = '#10B981' if growth >= 0 else '#EF4444'
+    growth_icon = '↗' if growth >= 0 else '↘'
+    growth_bg = 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)' if growth >= 0 else 'linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)'
+    growth_border = '#86EFAC' if growth >= 0 else '#FCA5A5'
     
-    with col_stat3:
-        if len(history_df_converted) >= 2:
-            growth = history_df_converted['net_worth'].iloc[-1] - history_df_converted['net_worth'].iloc[0]
-            growth_pct = (growth / history_df_converted['net_worth'].iloc[0] * 100) if history_df_converted['net_worth'].iloc[0] > 0 else 0
-            st.metric(L.CHART_GROWTH, f"{cur_sym}{growth:,.2f}", delta=f"{growth_pct:.2f}%")
+    st.markdown(f"""
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 0.5rem 0 1rem;">
+        <div class="u-card" style="padding: 18px 20px; text-align: center; background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border: 1px solid #FCD34D;">
+            <div style="font-size: 0.7rem; color: #92400E; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">🏔️ {L.CHART_ATH}</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: #78350F; font-family: 'Outfit', sans-serif; margin: 6px 0 4px;">{cur_sym}{max_nw:,.2f}</div>
+            <div style="font-size: 0.75rem; color: #B45309;">{max_date}</div>
+        </div>
+        <div class="u-card" style="padding: 18px 20px; text-align: center; background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border: 1px solid #93C5FD;">
+            <div style="font-size: 0.7rem; color: #1D4ED8; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">🏜️ {L.CHART_ATL}</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: #1E40AF; font-family: 'Outfit', sans-serif; margin: 6px 0 4px;">{cur_sym}{min_nw:,.2f}</div>
+            <div style="font-size: 0.75rem; color: #2563EB;">{min_date}</div>
+        </div>
+        <div class="u-card" style="padding: 18px 20px; text-align: center; {growth_bg}; border: 1px solid {growth_border};">
+            <div style="font-size: 0.7rem; color: {growth_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">{growth_icon} {L.CHART_GROWTH}</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: {growth_color}; font-family: 'Outfit', sans-serif; margin: 6px 0 4px;">{growth_pct:+.2f}%</div>
+            <div style="font-size: 0.75rem; color: {growth_color};">{cur_sym}{growth:+,.2f}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def render_monthly_heatmap(
