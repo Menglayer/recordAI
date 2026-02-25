@@ -192,42 +192,29 @@ def render_history_chart(
     
     if use_pct_view:
         # ==================== 百分比视图模式 ====================
-        history_df_converted['pct_change'] = ((history_df_converted['net_worth'] / first_val) - 1) * 100
+        history_df_converted['pct_change'] = round(((history_df_converted['net_worth'] / first_val) - 1) * 100, 2)
         
-        # 渐变填充底层（组合曲线下方区域）
-        fig_history.add_trace(go.Scatter(
-            x=history_df_converted['date'],
-            y=history_df_converted['pct_change'],
-            mode='lines',
-            line=dict(color='rgba(0,0,0,0)', width=0),
-            fill='tozeroy',
-            fillcolor=fill_color_top,
-            showlegend=False,
-            hoverinfo='skip'
-        ))
-        
-        # 主组合曲线
+        # 主组合曲线（对比模式下不加填充，保持干净）
         fig_history.add_trace(go.Scatter(
             x=history_df_converted['date'],
             y=history_df_converted['pct_change'],
             mode='lines+markers',
             name='我的组合',
-            line=dict(color=line_color, width=3.5, shape='spline', smoothing=1.3),
+            line=dict(color=line_color, width=3, shape='spline', smoothing=1.3),
             marker=dict(
-                size=7,
+                size=6,
                 color='white',
-                line=dict(color=line_color, width=2.5),
-                symbol='circle'
+                line=dict(color=line_color, width=2),
             ),
             hovertemplate='<b>我的组合</b>  %{y:+.2f}%<extra></extra>'
         ))
         
-        # 基准指数配色 — 更高对比度、更和谐的调色板
+        # 基准指数配色 — 高对比度、易区分
         benchmark_styles = {
-            'S&P500': {'color': '#6366F1', 'dash': 'dash',    'width': 2.2, 'symbol': 'diamond'},
-            'QQQ':    {'color': '#8B5CF6', 'dash': 'dot',     'width': 2.2, 'symbol': 'square'},
-            'BTC':    {'color': '#F59E0B', 'dash': 'dashdot', 'width': 2.2, 'symbol': 'triangle-up'},
-            '沪深300': {'color': '#EC4899', 'dash': 'dot',     'width': 2.0, 'symbol': 'cross'},
+            'S&P500': {'color': '#3B82F6', 'dash': 'dash',    'width': 2},  # 蓝色
+            'QQQ':    {'color': '#8B5CF6', 'dash': 'dot',     'width': 2},  # 紫色
+            'BTC':    {'color': '#F59E0B', 'dash': 'dashdot', 'width': 2},  # 琥珀色
+            '沪深300': {'color': '#EC4899', 'dash': 'dot',     'width': 2},  # 粉色
         }
         
         start_date = history_df_converted['date'].min()
@@ -277,42 +264,30 @@ def render_history_chart(
                 if bench_start <= 0:
                     continue
                 
-                bench_aligned['pct_change'] = ((bench_aligned['price'] / bench_start) - 1) * 100
+                bench_aligned['pct_change'] = round(((bench_aligned['price'] / bench_start) - 1) * 100, 2)
                 
                 # ====== 异常值检测：剔除单日跳变超过 50% 的数据点 ======
                 daily_change = bench_aligned['pct_change'].diff().abs()
                 outlier_mask = daily_change > 50
                 if outlier_mask.any():
                     bench_aligned = bench_aligned[~outlier_mask]
-                    # 重新计算 pct_change（基准点不变）
                     if len(bench_aligned) > 0:
-                        bench_aligned['pct_change'] = ((bench_aligned['price'] / bench_start) - 1) * 100
+                        bench_aligned['pct_change'] = round(((bench_aligned['price'] / bench_start) - 1) * 100, 2)
                 
                 if len(bench_aligned) < 2:
                     continue
                 
-                style = benchmark_styles.get(bench_name, {'color': '#9CA3AF', 'dash': 'dot', 'width': 2, 'symbol': 'circle'})
-                
-                # 仅在首尾显示 marker
-                marker_size = [0] * len(bench_aligned)
-                marker_size[0] = 5
-                marker_size[-1] = 5
+                style = benchmark_styles.get(bench_name, {'color': '#9CA3AF', 'dash': 'dot', 'width': 2})
                 
                 fig_history.add_trace(go.Scatter(
                     x=bench_aligned['date'],
                     y=bench_aligned['pct_change'],
-                    mode='lines+markers',
+                    mode='lines',
                     name=bench_name,
                     line=dict(
                         color=style['color'],
                         width=style['width'],
                         dash=style['dash']
-                    ),
-                    marker=dict(
-                        size=marker_size,
-                        color='white',
-                        line=dict(color=style['color'], width=1.5),
-                        symbol=style['symbol']
                     ),
                     hovertemplate=f'<b>{bench_name}</b>  ' + '%{y:+.2f}%<extra></extra>'
                 ))
@@ -470,7 +445,7 @@ def render_history_chart(
         yaxis_spikecolor='rgba(148, 163, 184, 0.3)',
         yaxis_spikethickness=1,
         yaxis_spikedash='solid',
-        hovermode='x unified',
+        hovermode='x unified' if not has_benchmarks else 'closest',
         hoverlabel=dict(
             bgcolor='rgba(255, 255, 255, 0.96)',
             font_size=13,
@@ -486,12 +461,10 @@ def render_history_chart(
             y=-0.12,
             xanchor='center',
             x=0.5,
-            font=dict(size=11, family='Inter', color='#475569'),
+            font=dict(size=12, family='Inter', color='#475569'),
             bgcolor='rgba(255,255,255,0)',
             borderwidth=0,
-            itemsizing='constant',
-            itemwidth=40,
-            tracegroupgap=12,
+            tracegroupgap=16,
         ),
     )
     
