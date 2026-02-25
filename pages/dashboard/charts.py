@@ -127,7 +127,8 @@ def render_history_chart(
     selected_benchmarks: List[str],
     get_benchmark_history: Callable,
     fx_rate: float,
-    cur_sym: str
+    cur_sym: str,
+    sort_order: str = "默认"
 ) -> None:
     """
     渲染净值历史曲线图（优化版）
@@ -139,6 +140,7 @@ def render_history_chart(
         get_benchmark_history: 获取基准数据的函数
         fx_rate: 汇率
         cur_sym: 货币符号
+        sort_order: 排序方式 ("默认", "收益↓", "收益↑")
     """
     theme = get_chart_theme()
     
@@ -244,6 +246,7 @@ def render_history_chart(
             benchmark_data = get_benchmark_history(start_date, end_date)
         
         aligned_benchmarks = {}  # 收集对齐后的基准数据用于 Y 轴计算
+        bench_traces = []       # 收集基准 trace 数据，稍后按排序统一添加
         
         for bench_name in selected_benchmarks:
             if bench_name in benchmark_data:
@@ -294,23 +297,47 @@ def render_history_chart(
                 if len(bench_aligned) < 2:
                     continue
                 
-                style = benchmark_styles.get(bench_name, {'color': '#9CA3AF', 'dash': 'dot', 'width': 2})
+                final_return = bench_aligned['pct_change'].iloc[-1]
                 
-                fig_history.add_trace(go.Scatter(
-                    x=bench_aligned['date'],
-                    y=bench_aligned['pct_change'],
-                    mode='lines',
-                    name=bench_name,
-                    line=dict(
-                        color=style['color'],
-                        width=style['width'],
-                        dash=style['dash']
-                    ),
-                    hovertemplate=f'<b>{bench_name}</b>  ' + '%{y:+.2f}%<extra></extra>'
-                ))
+                # 收集 trace 信息，不立即添加
+                bench_traces.append({
+                    'name': bench_name,
+                    'aligned_df': bench_aligned,
+                    'final_return': final_return,
+                })
                 
                 # 保存对齐后的数据用于 Y 轴计算
                 aligned_benchmarks[bench_name] = bench_aligned
+        
+        # ====== 按排序方式排序基准 traces ======
+        if sort_order == "收益↓":
+            bench_traces.sort(key=lambda t: t['final_return'], reverse=True)
+        elif sort_order == "收益↑":
+            bench_traces.sort(key=lambda t: t['final_return'], reverse=False)
+        # "默认" 保持原选择顺序
+        
+        # 统一添加基准 traces
+        for trace_info in bench_traces:
+            bench_name = trace_info['name']
+            bench_aligned = trace_info['aligned_df']
+            final_ret = trace_info['final_return']
+            style = benchmark_styles.get(bench_name, {'color': '#9CA3AF', 'dash': 'dot', 'width': 2})
+            
+            # 图例名称带最终收益率
+            legend_name = f"{bench_name}  {final_ret:+.1f}%"
+            
+            fig_history.add_trace(go.Scatter(
+                x=bench_aligned['date'],
+                y=bench_aligned['pct_change'],
+                mode='lines',
+                name=legend_name,
+                line=dict(
+                    color=style['color'],
+                    width=style['width'],
+                    dash=style['dash']
+                ),
+                hovertemplate=f'<b>{bench_name}</b>  ' + '%{y:+.2f}%<extra></extra>'
+            ))
         
         # 显示加载状态（更简洁）
         loaded = [b for b in selected_benchmarks if b in benchmark_data]

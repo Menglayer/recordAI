@@ -150,26 +150,54 @@ def show_dashboard(
     # ========== 历史曲线 ==========
     st.markdown(f"""<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>📉 {L.CHART_HISTORY}</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
     
-    benchmark_options = [
-        # 美股大盘
+    # ---- 收藏基准管理 ----
+    if 'favorite_benchmarks' not in st.session_state:
+        st.session_state.favorite_benchmarks = []
+    
+    all_benchmarks = [
         'S&P500', 'QQQ', '罗素2000',
-        # Magnificent 7
         'MAG7 ETF',
         'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA',
-        # 加密
         'BTC', 'ETH',
-        # 亚洲市场
         '沪深300', '恒生科技', '日经225',
-        # 另类资产
         '黄金', '美债20年',
     ]
-    selected_benchmarks = st.multiselect(
-        "📊 对比基准",
-        options=benchmark_options,
-        default=[],
-        help="选择要与您的资产组合进行对比的基准指数。包含美股七姐妹（Magnificent 7）个股及组合 ETF",
-        placeholder="选择基准指数..."
-    )
+    
+    # 构建选项列表：收藏的排在前面
+    favorites = [b for b in st.session_state.favorite_benchmarks if b in all_benchmarks]
+    non_favorites = [b for b in all_benchmarks if b not in favorites]
+    benchmark_options = favorites + non_favorites
+    
+    # 选择基准 + 排序控件 同行
+    bench_col, sort_col = st.columns([3, 1])
+    with bench_col:
+        selected_benchmarks = st.multiselect(
+            "📊 对比基准",
+            options=benchmark_options,
+            default=[],
+            help="选择要与您的资产组合进行对比的基准指数。⭐ 标记为已收藏，排在前面",
+            placeholder="选择基准指数...",
+            format_func=lambda x: f"⭐ {x}" if x in favorites else x
+        )
+    with sort_col:
+        sort_order = st.segmented_control(
+            "排序",
+            options=["默认", "收益↓", "收益↑"],
+            default="默认",
+            label_visibility="collapsed"
+        )
+    
+    # ---- 收藏管理（折叠区） ----
+    with st.expander("⭐ 管理收藏基准", expanded=False):
+        st.caption("勾选常用的基准，下次选择时会置顶显示")
+        fav_cols = st.columns(6)
+        new_favorites = []
+        for i, bench in enumerate(all_benchmarks):
+            with fav_cols[i % 6]:
+                if st.checkbox(bench, value=bench in favorites, key=f"fav_{bench}"):
+                    new_favorites.append(bench)
+        if new_favorites != favorites:
+            st.session_state.favorite_benchmarks = new_favorites
     
     history_df = calculations.get_net_worth_history(engine)
     
@@ -179,7 +207,8 @@ def show_dashboard(
         selected_benchmarks=selected_benchmarks,
         get_benchmark_history=calculations.get_benchmark_history,
         fx_rate=fx_rate,
-        cur_sym=cur_sym
+        cur_sym=cur_sym,
+        sort_order=sort_order
     )
     
     st.markdown("""<div style='margin: 2rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>🗓️ 月度分析</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
