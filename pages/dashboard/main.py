@@ -163,53 +163,73 @@ def show_dashboard(
         '黄金', '美债20年',
     ]
     
+    # 分组定义（用于收藏管理面板显示）
+    benchmark_groups = {
+        '🇺🇸 美股大盘': ['S&P500', 'QQQ', '罗素2000'],
+        '🏆 Mag 7': ['MAG7 ETF', 'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA'],
+        '🪙 加密': ['BTC', 'ETH'],
+        '🌏 亚洲': ['沪深300', '恒生科技', '日经225'],
+        '💎 另类': ['黄金', '美债20年'],
+    }
+    
     # 构建选项列表：收藏的排在前面
     favorites = [b for b in st.session_state.favorite_benchmarks if b in all_benchmarks]
     non_favorites = [b for b in all_benchmarks if b not in favorites]
     benchmark_options = favorites + non_favorites
     
-    # 选择基准 + 快捷按钮 + 排序控件 同行
-    bench_col, btn_col, sort_col = st.columns([3, 0.8, 1])
+    # ---- 基准对比面板（标题行） ----
+    st.markdown("""
+    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+        <span style="font-size: 1.1rem;">📊</span>
+        <span style="font-size: 0.95rem; font-weight: 700; color: var(--falcon-black); font-family: 'Outfit', sans-serif;">对比基准</span>
+        <span class="falcon-badge blue" style="font-size: 0.65rem;">18 个可选</span>
+        <div style="flex: 1;"></div>
+        <span style="font-size: 0.73rem; color: var(--falcon-muted);">⭐ 收藏基准自动置顶</span>
+    </div>
+    """, unsafe_allow_html=True)
     
-    with btn_col:
-        st.markdown("<div style='height: 6px'></div>", unsafe_allow_html=True)
-        b1, b2 = st.columns(2)
-        with b1:
-            if st.button("全选", use_container_width=True, key="bench_select_all"):
-                st.session_state['selected_benchmarks'] = benchmark_options.copy()
-                st.rerun()
-        with b2:
-            if st.button("清空", use_container_width=True, key="bench_clear_all"):
-                st.session_state['selected_benchmarks'] = []
-                st.rerun()
+    # 操作栏：选择器 + 按钮 + 排序
+    select_col, action_col = st.columns([4, 1.2])
     
-    with bench_col:
+    with select_col:
         selected_benchmarks = st.multiselect(
-            "📊 对比基准",
+            "对比基准",
             options=benchmark_options,
             default=st.session_state.get('selected_benchmarks', []),
-            help="选择要与您的资产组合进行对比的基准指数。⭐ 标记为已收藏，排在前面",
-            placeholder="选择基准指数...",
+            placeholder="🔍 搜索或选择基准...",
             format_func=lambda x: f"⭐ {x}" if x in favorites else x,
-            key="selected_benchmarks"
-        )
-    with sort_col:
-        sort_order = st.segmented_control(
-            "排序",
-            options=["默认", "收益↓", "收益↑"],
-            default="默认",
+            key="selected_benchmarks",
             label_visibility="collapsed"
         )
     
-    # ---- 收藏管理（折叠区） ----
-    with st.expander("⭐ 管理收藏基准", expanded=False):
-        st.caption("勾选常用的基准，下次选择时会置顶显示")
-        fav_cols = st.columns(6)
+    with action_col:
+        a1, a2, a3 = st.columns([1, 1, 1.5])
+        with a1:
+            if st.button("✅ 全选", use_container_width=True, key="bench_select_all", type="secondary"):
+                st.session_state['selected_benchmarks'] = benchmark_options.copy()
+                st.rerun()
+        with a2:
+            if st.button("🗑 清空", use_container_width=True, key="bench_clear_all", type="secondary"):
+                st.session_state['selected_benchmarks'] = []
+                st.rerun()
+        with a3:
+            sort_order = st.segmented_control(
+                "排序",
+                options=["默认", "收益↓", "收益↑"],
+                default="默认",
+                label_visibility="collapsed"
+            )
+    
+    # ---- 收藏管理（折叠区），按分组分类显示 ----
+    with st.expander("⭐ 管理收藏基准 — 收藏的基准会自动置顶", expanded=False):
         new_favorites = []
-        for i, bench in enumerate(all_benchmarks):
-            with fav_cols[i % 6]:
-                if st.checkbox(bench, value=bench in favorites, key=f"fav_{bench}"):
-                    new_favorites.append(bench)
+        for group_label, group_items in benchmark_groups.items():
+            st.markdown(f"<div style='font-size: 0.8rem; font-weight: 600; color: var(--falcon-muted); margin: 8px 0 4px; letter-spacing: 0.03em;'>{group_label}</div>", unsafe_allow_html=True)
+            cols = st.columns(len(group_items))
+            for j, bench in enumerate(group_items):
+                with cols[j]:
+                    if st.checkbox(bench, value=bench in favorites, key=f"fav_{bench}"):
+                        new_favorites.append(bench)
         if new_favorites != favorites:
             st.session_state.favorite_benchmarks = new_favorites
     
