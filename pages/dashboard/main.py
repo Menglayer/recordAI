@@ -188,6 +188,18 @@ def show_dashboard(
     </div>
     """, unsafe_allow_html=True)
     
+    # 处理全选/清空 action
+    if 'bench_action' not in st.session_state:
+        st.session_state.bench_action = None
+    
+    bench_default = []
+    if st.session_state.bench_action == 'all':
+        bench_default = benchmark_options.copy()
+        st.session_state.bench_action = None
+    elif st.session_state.bench_action == 'clear':
+        bench_default = []
+        st.session_state.bench_action = None
+    
     # 操作栏：选择器 + 按钮 + 排序
     select_col, action_col = st.columns([4, 1.2])
     
@@ -195,10 +207,9 @@ def show_dashboard(
         selected_benchmarks = st.multiselect(
             "对比基准",
             options=benchmark_options,
-            default=st.session_state.get('selected_benchmarks', []),
+            default=bench_default,
             placeholder="🔍 搜索或选择基准...",
             format_func=lambda x: f"⭐ {x}" if x in favorites else x,
-            key="selected_benchmarks",
             label_visibility="collapsed"
         )
     
@@ -206,11 +217,11 @@ def show_dashboard(
         a1, a2, a3 = st.columns([1, 1, 1.5])
         with a1:
             if st.button("✅ 全选", use_container_width=True, key="bench_select_all", type="secondary"):
-                st.session_state['selected_benchmarks'] = benchmark_options.copy()
+                st.session_state.bench_action = 'all'
                 st.rerun()
         with a2:
             if st.button("🗑 清空", use_container_width=True, key="bench_clear_all", type="secondary"):
-                st.session_state['selected_benchmarks'] = []
+                st.session_state.bench_action = 'clear'
                 st.rerun()
         with a3:
             sort_order = st.segmented_control(
