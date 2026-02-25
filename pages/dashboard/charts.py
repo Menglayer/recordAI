@@ -233,46 +233,92 @@ def render_history_chart(
         start_date = history_df_converted['date'].min()
         end_date = history_df_converted['date'].max()
         
+        # 组合数据的日期列表（用于对齐基准数据）
+        portfolio_dates = sorted(history_df_converted['date'].unique())
+        
         with st.spinner("📈 获取基准数据..."):
             benchmark_data = get_benchmark_history(start_date, end_date)
+        
+        aligned_benchmarks = {}  # 收集对齐后的基准数据用于 Y 轴计算
         
         for bench_name in selected_benchmarks:
             if bench_name in benchmark_data:
                 bench_df = benchmark_data[bench_name].copy()
                 
-                if len(bench_df) > 0:
-                    bench_start = bench_df['price'].iloc[0]
-                    if bench_start > 0:
-                        bench_df['pct_change'] = ((bench_df['price'] / bench_start) - 1) * 100
-                    else:
-                        continue
-                    
-                    style = benchmark_styles.get(bench_name, {'color': '#9CA3AF', 'dash': 'dot', 'width': 2, 'symbol': 'circle'})
-                    
-                    # 仅在首尾和关键点显示 marker
-                    marker_size = [0] * len(bench_df)
-                    if len(bench_df) > 0:
-                        marker_size[0] = 5
-                        marker_size[-1] = 5
-                    
-                    fig_history.add_trace(go.Scatter(
-                        x=bench_df['date'],
-                        y=bench_df['pct_change'],
-                        mode='lines+markers',
-                        name=bench_name,
-                        line=dict(
-                            color=style['color'],
-                            width=style['width'],
-                            dash=style['dash']
-                        ),
-                        marker=dict(
-                            size=marker_size,
-                            color='white',
-                            line=dict(color=style['color'], width=1.5),
-                            symbol=style['symbol']
-                        ),
-                        hovertemplate=f'<b>{bench_name}</b>  ' + '%{y:+.2f}%<extra></extra>'
-                    ))
+                if len(bench_df) == 0:
+                    continue
+                
+                # ====== 关键修复：将基准数据对齐到组合数据的日期 ======
+                bench_df['date'] = pd.to_datetime(bench_df['date'])
+                bench_df = bench_df.sort_values('date').drop_duplicates(subset='date')
+                
+                # 构建组合日期 DataFrame 用于 merge_asof
+                portfolio_dates_df = pd.DataFrame({
+                    'date': pd.to_datetime(portfolio_dates)
+                }).sort_values('date')
+                
+                # merge_asof: 对每个组合日期，找到最近的基准价格（向前找）
+                bench_aligned = pd.merge_asof(
+                    portfolio_dates_df,
+                    bench_df[['date', 'price']],
+                    on='date',
+                    direction='nearest',
+                    tolerance=pd.Timedelta(days=5)  # 最多容忍5天偏差
+                )
+                
+                # 去除无法匹配的点
+                bench_aligned = bench_aligned.dropna(subset=['price'])
+                bench_aligned['date'] = bench_aligned['date'].dt.date
+                
+                if len(bench_aligned) < 2:
+                    continue
+                
+                bench_start = bench_aligned['price'].iloc[0]
+                if bench_start <= 0:
+                    continue
+                
+                bench_aligned['pct_change'] = ((bench_aligned['price'] / bench_start) - 1) * 100
+                
+                # ====== 异常值检测：剔除单日跳变超过 50% 的数据点 ======
+                daily_change = bench_aligned['pct_change'].diff().abs()
+                outlier_mask = daily_change > 50
+                if outlier_mask.any():
+                    bench_aligned = bench_aligned[~outlier_mask]
+                    # 重新计算 pct_change（基准点不变）
+                    if len(bench_aligned) > 0:
+                        bench_aligned['pct_change'] = ((bench_aligned['price'] / bench_start) - 1) * 100
+                
+                if len(bench_aligned) < 2:
+                    continue
+                
+                style = benchmark_styles.get(bench_name, {'color': '#9CA3AF', 'dash': 'dot', 'width': 2, 'symbol': 'circle'})
+                
+                # 仅在首尾显示 marker
+                marker_size = [0] * len(bench_aligned)
+                marker_size[0] = 5
+                marker_size[-1] = 5
+                
+                fig_history.add_trace(go.Scatter(
+                    x=bench_aligned['date'],
+                    y=bench_aligned['pct_change'],
+                    mode='lines+markers',
+                    name=bench_name,
+                    line=dict(
+                        color=style['color'],
+                        width=style['width'],
+                        dash=style['dash']
+                    ),
+                    marker=dict(
+                        size=marker_size,
+                        color='white',
+                        line=dict(color=style['color'], width=1.5),
+                        symbol=style['symbol']
+                    ),
+                    hovertemplate=f'<b>{bench_name}</b>  ' + '%{y:+.2f}%<extra></extra>'
+                ))
+                
+                # 保存对齐后的数据用于 Y 轴计算
+                aligned_benchmarks[bench_name] = bench_aligned
         
         # 显示加载状态（更简洁）
         loaded = [b for b in selected_benchmarks if b in benchmark_data]
@@ -285,11 +331,11 @@ def render_history_chart(
         if status_parts:
             st.caption("  ·  ".join(status_parts))
         
-        # 计算 Y 轴范围
+        # 计算 Y 轴范围（使用对齐后的数据）
         all_pct = history_df_converted['pct_change'].tolist()
-        for bench_name in selected_benchmarks:
-            if bench_name in benchmark_data and 'pct_change' in benchmark_data[bench_name].columns:
-                all_pct.extend(benchmark_data[bench_name]['pct_change'].tolist())
+        for bench_name, bench_aligned_df in aligned_benchmarks.items():
+            if 'pct_change' in bench_aligned_df.columns:
+                all_pct.extend(bench_aligned_df['pct_change'].tolist())
         
         y_min_pct = min(all_pct) if all_pct else -5
         y_max_pct = max(all_pct) if all_pct else 5
