@@ -216,6 +216,16 @@ def render_history_chart(
             'BTC':    {'color': '#F59E0B', 'dash': 'dashdot', 'width': 2},  # 琥珀色
             '沪深300': {'color': '#EC4899', 'dash': 'dot',     'width': 2},  # 粉色
             '黄金':    {'color': '#CA8A04', 'dash': 'dash',    'width': 2},  # 金色
+            # Magnificent 7 个股
+            'AAPL':   {'color': '#A1A1AA', 'dash': 'dash',    'width': 1.8},  # 苹果灰
+            'MSFT':   {'color': '#0078D4', 'dash': 'dot',     'width': 1.8},  # 微软蓝
+            'GOOGL':  {'color': '#4285F4', 'dash': 'dashdot', 'width': 1.8},  # 谷歌蓝
+            'AMZN':   {'color': '#FF9900', 'dash': 'dash',    'width': 1.8},  # 亚马逊橙
+            'NVDA':   {'color': '#76B900', 'dash': 'dot',     'width': 1.8},  # 英伟达绿
+            'META':   {'color': '#1877F2', 'dash': 'dashdot', 'width': 1.8},  # Meta 蓝
+            'TSLA':   {'color': '#E31937', 'dash': 'dash',    'width': 1.8},  # 特斯拉红
+            # Magnificent 7 组合 ETF
+            'MAG7 ETF': {'color': '#06B6D4', 'dash': 'solid', 'width': 2.5},  # 青色 粗实线
         }
         
         start_date = history_df_converted['date'].min()

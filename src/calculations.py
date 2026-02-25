@@ -362,6 +362,16 @@ def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.Data
         'BTC':    ['BTC-USD'],
         '沪深300': ['000300.SS'],
         '黄金':    ['GC=F', 'GLD'],    # GLD 作为备选（黄金 ETF）
+        # ===== Magnificent 7 个股 =====
+        'AAPL':   ['AAPL'],
+        'MSFT':   ['MSFT'],
+        'GOOGL':  ['GOOGL', 'GOOG'],
+        'AMZN':   ['AMZN'],
+        'NVDA':   ['NVDA'],
+        'META':   ['META'],
+        'TSLA':   ['TSLA'],
+        # ===== Magnificent 7 组合 ETF =====
+        'MAG7 ETF': ['MAGS'],          # Roundhill Magnificent Seven ETF
     }
     
     result = {}

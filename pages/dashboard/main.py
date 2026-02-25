@@ -150,12 +150,16 @@ def show_dashboard(
     # ========== 历史曲线 ==========
     st.markdown(f"""<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>📉 {L.CHART_HISTORY}</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
     
-    benchmark_options = ['S&P500', 'QQQ', 'BTC', '沪深300', '黄金']
+    benchmark_options = [
+        'S&P500', 'QQQ', 'BTC', '沪深300', '黄金',
+        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'META', 'TSLA',
+        'MAG7 ETF',
+    ]
     selected_benchmarks = st.multiselect(
         "📊 对比基准",
         options=benchmark_options,
         default=[],
-        help="选择要与您的资产组合进行对比的基准指数",
+        help="选择要与您的资产组合进行对比的基准指数。包含美股七姐妹（Magnificent 7）个股及组合 ETF",
         placeholder="选择基准指数..."
     )
     
