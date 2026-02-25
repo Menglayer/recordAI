@@ -168,16 +168,30 @@ def show_dashboard(
     non_favorites = [b for b in all_benchmarks if b not in favorites]
     benchmark_options = favorites + non_favorites
     
-    # 选择基准 + 排序控件 同行
-    bench_col, sort_col = st.columns([3, 1])
+    # 选择基准 + 快捷按钮 + 排序控件 同行
+    bench_col, btn_col, sort_col = st.columns([3, 0.8, 1])
+    
+    with btn_col:
+        st.markdown("<div style='height: 6px'></div>", unsafe_allow_html=True)
+        b1, b2 = st.columns(2)
+        with b1:
+            if st.button("全选", use_container_width=True, key="bench_select_all"):
+                st.session_state['selected_benchmarks'] = benchmark_options.copy()
+                st.rerun()
+        with b2:
+            if st.button("清空", use_container_width=True, key="bench_clear_all"):
+                st.session_state['selected_benchmarks'] = []
+                st.rerun()
+    
     with bench_col:
         selected_benchmarks = st.multiselect(
             "📊 对比基准",
             options=benchmark_options,
-            default=[],
+            default=st.session_state.get('selected_benchmarks', []),
             help="选择要与您的资产组合进行对比的基准指数。⭐ 标记为已收藏，排在前面",
             placeholder="选择基准指数...",
-            format_func=lambda x: f"⭐ {x}" if x in favorites else x
+            format_func=lambda x: f"⭐ {x}" if x in favorites else x,
+            key="selected_benchmarks"
         )
     with sort_col:
         sort_order = st.segmented_control(
