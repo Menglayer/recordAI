@@ -344,6 +344,7 @@ def get_net_worth_history(_engine: Engine) -> pd.DataFrame:
 def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.DataFrame]:
     """
     获取基准指数价格历史（使用 yfinance）
+    注意：yfinance.download 非线程安全，必须串行调用
     
     Args:
         start_date: 开始日期
@@ -367,9 +368,7 @@ def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.Data
     start_str = start_date.strftime('%Y-%m-%d') if isinstance(start_date, date) else str(start_date)
     end_str = (end_date + timedelta(days=1)).strftime('%Y-%m-%d') if isinstance(end_date, date) else str(end_date)
     
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
-    def fetch_single_benchmark(name, ticker):
+    for name, ticker in benchmarks.items():
         try:
             data = yf.download(
                 ticker, 
@@ -379,33 +378,33 @@ def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.Data
                 auto_adjust=True
             )
             
-            if not data.empty:
-                # 处理多层索引列
-                if isinstance(data.columns, pd.MultiIndex):
-                    data.columns = data.columns.get_level_values(0)
+            if data.empty:
+                continue
+            
+            # 安全提取 Close 列，兼容 MultiIndex 和普通 Index
+            if isinstance(data.columns, pd.MultiIndex):
+                # yfinance 返回 MultiIndex: ('Close', 'TICKER'), ...
+                close_series = data['Close']
+                # 如果是 DataFrame（多 ticker），取第一列；否则已经是 Series
+                if isinstance(close_series, pd.DataFrame):
+                    close_series = close_series.iloc[:, 0]
+            elif 'Close' in data.columns:
+                close_series = data['Close']
+            else:
+                print(f"✗ [Benchmark] {name}: 'Close' not found, columns={data.columns.tolist()}")
+                continue
+            
+            prices = close_series.reset_index()
+            prices.columns = ['date', 'price']
+            prices['date'] = pd.to_datetime(prices['date']).dt.date
+            prices['price'] = pd.to_numeric(prices['price'], errors='coerce')
+            prices = prices.dropna()
+            
+            if len(prices) > 0:
+                result[name] = prices
                 
-                prices = data[['Close']].reset_index()
-                prices.columns = ['date', 'price']
-                prices['date'] = pd.to_datetime(prices['date']).dt.date
-                prices['price'] = pd.to_numeric(prices['price'], errors='coerce')
-                prices = prices.dropna()
-                
-                if len(prices) > 0:
-                    return name, prices
-        except Exception:
-            pass
-        return name, None
-
-    with ThreadPoolExecutor(max_workers=4) as executor:
-        future_to_name = {
-            executor.submit(fetch_single_benchmark, name, ticker): name 
-            for name, ticker in benchmarks.items()
-        }
-        
-        for future in as_completed(future_to_name):
-            name, df = future.result()
-            if df is not None:
-                result[name] = df
+        except Exception as e:
+            print(f"✗ [Benchmark] {name} ({ticker}) 获取失败: {e}")
     
     return result
 
