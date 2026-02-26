@@ -1,6 +1,15 @@
 """
 Dashboard Charts Components
 图表渲染组件：资产分布、历史曲线、月度热力图
+
+重构说明：
+- render_history_chart 拆分为多个子函数，提升可读性和可测试性
+- _apply_time_filter: 时间筛选 + 货币转换
+- _align_benchmark: 单个基准数据对齐到组合日期
+- _build_pct_view: 百分比视图（含基准对比）
+- _build_abs_view: 绝对值视图
+- _apply_common_layout: 通用图表布局
+- _render_history_stats: 统计指标卡片
 """
 from typing import Dict, Any, Optional, List, Callable
 from datetime import date, timedelta
@@ -12,6 +21,29 @@ import plotly.graph_objects as go
 
 from src import lang as L
 from src.styles import MODERN_COLORS
+
+
+# ================= 基准指数配色表 =================
+BENCHMARK_STYLES = {
+    'S&P500': {'color': '#3B82F6', 'dash': 'dash',    'width': 2},
+    'QQQ':    {'color': '#8B5CF6', 'dash': 'dot',     'width': 2},
+    'BTC':    {'color': '#F59E0B', 'dash': 'dashdot', 'width': 2},
+    '沪深300': {'color': '#EC4899', 'dash': 'dot',     'width': 2},
+    '黄金':    {'color': '#CA8A04', 'dash': 'dash',    'width': 2},
+    'AAPL':   {'color': '#A1A1AA', 'dash': 'dash',    'width': 1.8},
+    'MSFT':   {'color': '#0078D4', 'dash': 'dot',     'width': 1.8},
+    'GOOGL':  {'color': '#4285F4', 'dash': 'dashdot', 'width': 1.8},
+    'AMZN':   {'color': '#FF9900', 'dash': 'dash',    'width': 1.8},
+    'NVDA':   {'color': '#76B900', 'dash': 'dot',     'width': 1.8},
+    'META':   {'color': '#1877F2', 'dash': 'dashdot', 'width': 1.8},
+    'TSLA':   {'color': '#E31937', 'dash': 'dash',    'width': 1.8},
+    'MAG7 ETF': {'color': '#06B6D4', 'dash': 'solid', 'width': 2.5},
+    'ETH':      {'color': '#627EEA', 'dash': 'dashdot', 'width': 2},
+    '罗素2000':  {'color': '#92400E', 'dash': 'dot',     'width': 1.8},
+    '恒生科技':  {'color': '#DC2626', 'dash': 'dash',    'width': 1.8},
+    '美债20年':  {'color': '#4338CA', 'dash': 'dot',     'width': 2},
+    '日经225':   {'color': '#F472B6', 'dash': 'dashdot', 'width': 1.8},
+}
 
 
 def _format_change(val: float) -> str:
@@ -121,347 +153,340 @@ def render_asset_charts(
             st.info(L.CHART_NO_DATA)
 
 
-def render_history_chart(
+# =====================================================================
+#  render_history_chart 子函数
+# =====================================================================
+
+def _apply_time_filter(
     history_df: pd.DataFrame,
     time_filter: str,
-    selected_benchmarks: List[str],
-    get_benchmark_history: Callable,
-    fx_rate: float,
-    cur_sym: str,
-    sort_order: str = "默认"
-) -> None:
+    fx_rate: float
+) -> pd.DataFrame:
     """
-    渲染净值历史曲线图（优化版）
+    应用时间筛选并转换货币
     
     Args:
-        history_df: 历史净值 DataFrame
-        time_filter: 时间筛选（"7D", "30D", "90D", "全部"）
-        selected_benchmarks: 选中的基准指数
-        get_benchmark_history: 获取基准数据的函数
+        history_df: 原始历史数据
+        time_filter: "7D" / "30D" / "90D" / "全部"
         fx_rate: 汇率
-        cur_sym: 货币符号
-        sort_order: 排序方式 ("默认", "收益↓", "收益↑")
+        
+    Returns:
+        筛选并转换后的 DataFrame
     """
-    theme = get_chart_theme()
+    df = history_df.copy()
     
-    if history_df.empty:
-        st.info(L.CHART_NO_HISTORY)
-        return
+    filter_days = {"7D": 7, "30D": 30, "90D": 90}
+    if time_filter in filter_days:
+        cutoff = date.today() - timedelta(days=filter_days[time_filter])
+        df = df[df['date'] >= cutoff]
     
-    if len(history_df) == 1:
-        st.info(L.CHART_NEED_2)
-        return
+    # 转换货币
+    result = df.copy()
+    result['net_worth'] = result['net_worth'] * fx_rate
     
-    # 应用时间筛选
-    history_df_filtered = history_df.copy()
-    if time_filter == "7D":
-        cutoff_date = date.today() - timedelta(days=7)
-        history_df_filtered = history_df_filtered[history_df_filtered['date'] >= cutoff_date]
-    elif time_filter == "30D":
-        cutoff_date = date.today() - timedelta(days=30)
-        history_df_filtered = history_df_filtered[history_df_filtered['date'] >= cutoff_date]
-    elif time_filter == "90D":
-        cutoff_date = date.today() - timedelta(days=90)
-        history_df_filtered = history_df_filtered[history_df_filtered['date'] >= cutoff_date]
-    
-    # 货币转换
-    history_df_converted = history_df_filtered.copy()
-    history_df_converted['net_worth'] = history_df_converted['net_worth'] * fx_rate
-    
-    # 检查筛选后数据是否足够
-    if len(history_df_converted) < 2:
+    # 筛选后数据不足时回退到全部
+    if len(result) < 2:
         st.info("选定时间范围内数据不足，显示全部历史数据")
-        history_df_converted = history_df.copy()
-        history_df_converted['net_worth'] = history_df_converted['net_worth'] * fx_rate
+        result = history_df.copy()
+        result['net_worth'] = result['net_worth'] * fx_rate
     
-    # 检查是否所有值相同
-    if history_df['net_worth'].nunique() == 1:
-        st.warning("📊 所有历史日期的净值相同，可能是因为缺少历史价格数据。")
+    return result
+
+
+def _align_benchmark(
+    bench_df: pd.DataFrame,
+    portfolio_dates: list
+) -> Optional[pd.DataFrame]:
+    """
+    将单个基准数据对齐到组合的日期点
     
-    fig_history = go.Figure()
+    Args:
+        bench_df: 基准原始 DataFrame (含 date, price 列)
+        portfolio_dates: 组合数据的日期列表
+        
+    Returns:
+        对齐后的 DataFrame (含 date, price, pct_change) 或 None
+    """
+    if len(bench_df) == 0:
+        return None
     
-    # 确定趋势颜色
-    first_val = history_df_converted['net_worth'].iloc[0]
-    last_val = history_df_converted['net_worth'].iloc[-1]
-    is_up = last_val >= first_val
+    bench = bench_df.copy()
+    bench['date'] = pd.to_datetime(bench['date'])
+    bench = bench.sort_values('date').drop_duplicates(subset='date')
     
-    # 使用更精致的配色
-    line_color = '#10B981' if is_up else '#EF4444'
-    fill_color_top = 'rgba(16, 185, 129, 0.18)' if is_up else 'rgba(239, 68, 68, 0.18)'
-    fill_color_bottom = 'rgba(16, 185, 129, 0.02)' if is_up else 'rgba(239, 68, 68, 0.02)'
+    portfolio_dates_df = pd.DataFrame({
+        'date': pd.to_datetime(portfolio_dates)
+    }).sort_values('date')
     
-    use_pct_view = len(selected_benchmarks) > 0
+    aligned = pd.merge_asof(
+        portfolio_dates_df,
+        bench[['date', 'price']],
+        on='date',
+        direction='nearest',
+        tolerance=pd.Timedelta(days=5)
+    )
     
-    if use_pct_view:
-        # ==================== 百分比视图模式 ====================
-        history_df_converted['pct_change'] = round(((history_df_converted['net_worth'] / first_val) - 1) * 100, 2)
+    aligned = aligned.dropna(subset=['price'])
+    aligned['date'] = aligned['date'].dt.date
+    
+    if len(aligned) < 2:
+        return None
+    
+    bench_start = aligned['price'].iloc[0]
+    if bench_start <= 0:
+        return None
+    
+    aligned['pct_change'] = round(((aligned['price'] / bench_start) - 1) * 100, 2)
+    
+    # 异常值检测：剔除单日跳变超过 50% 的数据点
+    daily_change = aligned['pct_change'].diff().abs()
+    outlier_mask = daily_change > 50
+    if outlier_mask.any():
+        aligned = aligned[~outlier_mask]
+        if len(aligned) > 0:
+            aligned['pct_change'] = round(((aligned['price'] / bench_start) - 1) * 100, 2)
+    
+    if len(aligned) < 2:
+        return None
+    
+    return aligned
+
+
+def _build_pct_view(
+    fig: go.Figure,
+    history_df_converted: pd.DataFrame,
+    first_val: float,
+    line_color: str,
+    selected_benchmarks: List[str],
+    get_benchmark_history: Callable,
+    sort_order: str
+) -> None:
+    """
+    构建百分比对比视图（组合 + 基准指数）
+    
+    Args:
+        fig: Plotly Figure 对象
+        history_df_converted: 已转换的历史数据
+        first_val: 起始净值
+        line_color: 主曲线颜色
+        selected_benchmarks: 选中的基准列表
+        get_benchmark_history: 获取基准数据的函数
+        sort_order: 排序方式
+    """
+    history_df_converted['pct_change'] = round(
+        ((history_df_converted['net_worth'] / first_val) - 1) * 100, 2
+    )
+    
+    # 主组合曲线
+    fig.add_trace(go.Scatter(
+        x=history_df_converted['date'],
+        y=history_df_converted['pct_change'],
+        mode='lines+markers',
+        name='我的组合',
+        line=dict(color=line_color, width=3, shape='spline', smoothing=1.3),
+        marker=dict(size=6, color='white', line=dict(color=line_color, width=2)),
+        hovertemplate='<b>我的组合</b>  %{y:+.2f}%<extra></extra>'
+    ))
+    
+    # 获取基准数据
+    start_date = history_df_converted['date'].min()
+    end_date = history_df_converted['date'].max()
+    portfolio_dates = sorted(history_df_converted['date'].unique())
+    
+    with st.spinner("📈 获取基准数据..."):
+        benchmark_data = get_benchmark_history(start_date, end_date)
+    
+    aligned_benchmarks = {}
+    bench_traces = []
+    
+    for bench_name in selected_benchmarks:
+        if bench_name not in benchmark_data:
+            continue
+        aligned = _align_benchmark(benchmark_data[bench_name], portfolio_dates)
+        if aligned is None:
+            continue
         
-        # 主组合曲线（对比模式下不加填充，保持干净）
-        fig_history.add_trace(go.Scatter(
-            x=history_df_converted['date'],
-            y=history_df_converted['pct_change'],
-            mode='lines+markers',
-            name='我的组合',
-            line=dict(color=line_color, width=3, shape='spline', smoothing=1.3),
-            marker=dict(
-                size=6,
-                color='white',
-                line=dict(color=line_color, width=2),
-            ),
-            hovertemplate='<b>我的组合</b>  %{y:+.2f}%<extra></extra>'
-        ))
+        bench_traces.append({
+            'name': bench_name,
+            'aligned_df': aligned,
+            'final_return': aligned['pct_change'].iloc[-1],
+        })
+        aligned_benchmarks[bench_name] = aligned
+    
+    # 排序
+    if sort_order == "收益↓":
+        bench_traces.sort(key=lambda t: t['final_return'], reverse=True)
+    elif sort_order == "收益↑":
+        bench_traces.sort(key=lambda t: t['final_return'], reverse=False)
+    
+    # 添加基准 traces
+    for trace_info in bench_traces:
+        bench_name = trace_info['name']
+        bench_aligned = trace_info['aligned_df']
+        final_ret = trace_info['final_return']
+        style = BENCHMARK_STYLES.get(bench_name, {'color': '#9CA3AF', 'dash': 'dot', 'width': 2})
         
-        # 基准指数配色 — 高对比度、易区分
-        benchmark_styles = {
-            'S&P500': {'color': '#3B82F6', 'dash': 'dash',    'width': 2},  # 蓝色
-            'QQQ':    {'color': '#8B5CF6', 'dash': 'dot',     'width': 2},  # 紫色
-            'BTC':    {'color': '#F59E0B', 'dash': 'dashdot', 'width': 2},  # 琥珀色
-            '沪深300': {'color': '#EC4899', 'dash': 'dot',     'width': 2},  # 粉色
-            '黄金':    {'color': '#CA8A04', 'dash': 'dash',    'width': 2},  # 金色
-            # Magnificent 7 个股
-            'AAPL':   {'color': '#A1A1AA', 'dash': 'dash',    'width': 1.8},  # 苹果灰
-            'MSFT':   {'color': '#0078D4', 'dash': 'dot',     'width': 1.8},  # 微软蓝
-            'GOOGL':  {'color': '#4285F4', 'dash': 'dashdot', 'width': 1.8},  # 谷歌蓝
-            'AMZN':   {'color': '#FF9900', 'dash': 'dash',    'width': 1.8},  # 亚马逊橙
-            'NVDA':   {'color': '#76B900', 'dash': 'dot',     'width': 1.8},  # 英伟达绿
-            'META':   {'color': '#1877F2', 'dash': 'dashdot', 'width': 1.8},  # Meta 蓝
-            'TSLA':   {'color': '#E31937', 'dash': 'dash',    'width': 1.8},  # 特斯拉红
-            # Magnificent 7 组合 ETF
-            'MAG7 ETF': {'color': '#06B6D4', 'dash': 'solid', 'width': 2.5},  # 青色 粗实线
-            # 其他热门基准
-            'ETH':      {'color': '#627EEA', 'dash': 'dashdot', 'width': 2},    # 以太坊紫蓝
-            '罗素2000':  {'color': '#92400E', 'dash': 'dot',     'width': 1.8},  # 棕色
-            '恒生科技':  {'color': '#DC2626', 'dash': 'dash',    'width': 1.8},  # 红色
-            '美债20年':  {'color': '#4338CA', 'dash': 'dot',     'width': 2},    # 靛蓝
-            '日经225':   {'color': '#F472B6', 'dash': 'dashdot', 'width': 1.8},  # 樱花粉
-        }
+        legend_name = f"{bench_name}  {final_ret:+.1f}%"
         
-        start_date = history_df_converted['date'].min()
-        end_date = history_df_converted['date'].max()
-        
-        # 组合数据的日期列表（用于对齐基准数据）
-        portfolio_dates = sorted(history_df_converted['date'].unique())
-        
-        with st.spinner("📈 获取基准数据..."):
-            benchmark_data = get_benchmark_history(start_date, end_date)
-        
-        aligned_benchmarks = {}  # 收集对齐后的基准数据用于 Y 轴计算
-        bench_traces = []       # 收集基准 trace 数据，稍后按排序统一添加
-        
-        for bench_name in selected_benchmarks:
-            if bench_name in benchmark_data:
-                bench_df = benchmark_data[bench_name].copy()
-                
-                if len(bench_df) == 0:
-                    continue
-                
-                # ====== 关键修复：将基准数据对齐到组合数据的日期 ======
-                bench_df['date'] = pd.to_datetime(bench_df['date'])
-                bench_df = bench_df.sort_values('date').drop_duplicates(subset='date')
-                
-                # 构建组合日期 DataFrame 用于 merge_asof
-                portfolio_dates_df = pd.DataFrame({
-                    'date': pd.to_datetime(portfolio_dates)
-                }).sort_values('date')
-                
-                # merge_asof: 对每个组合日期，找到最近的基准价格（向前找）
-                bench_aligned = pd.merge_asof(
-                    portfolio_dates_df,
-                    bench_df[['date', 'price']],
-                    on='date',
-                    direction='nearest',
-                    tolerance=pd.Timedelta(days=5)  # 最多容忍5天偏差
-                )
-                
-                # 去除无法匹配的点
-                bench_aligned = bench_aligned.dropna(subset=['price'])
-                bench_aligned['date'] = bench_aligned['date'].dt.date
-                
-                if len(bench_aligned) < 2:
-                    continue
-                
-                bench_start = bench_aligned['price'].iloc[0]
-                if bench_start <= 0:
-                    continue
-                
-                bench_aligned['pct_change'] = round(((bench_aligned['price'] / bench_start) - 1) * 100, 2)
-                
-                # ====== 异常值检测：剔除单日跳变超过 50% 的数据点 ======
-                daily_change = bench_aligned['pct_change'].diff().abs()
-                outlier_mask = daily_change > 50
-                if outlier_mask.any():
-                    bench_aligned = bench_aligned[~outlier_mask]
-                    if len(bench_aligned) > 0:
-                        bench_aligned['pct_change'] = round(((bench_aligned['price'] / bench_start) - 1) * 100, 2)
-                
-                if len(bench_aligned) < 2:
-                    continue
-                
-                final_return = bench_aligned['pct_change'].iloc[-1]
-                
-                # 收集 trace 信息，不立即添加
-                bench_traces.append({
-                    'name': bench_name,
-                    'aligned_df': bench_aligned,
-                    'final_return': final_return,
-                })
-                
-                # 保存对齐后的数据用于 Y 轴计算
-                aligned_benchmarks[bench_name] = bench_aligned
-        
-        # ====== 按排序方式排序基准 traces ======
-        if sort_order == "收益↓":
-            bench_traces.sort(key=lambda t: t['final_return'], reverse=True)
-        elif sort_order == "收益↑":
-            bench_traces.sort(key=lambda t: t['final_return'], reverse=False)
-        # "默认" 保持原选择顺序
-        
-        # 统一添加基准 traces
-        for trace_info in bench_traces:
-            bench_name = trace_info['name']
-            bench_aligned = trace_info['aligned_df']
-            final_ret = trace_info['final_return']
-            style = benchmark_styles.get(bench_name, {'color': '#9CA3AF', 'dash': 'dot', 'width': 2})
-            
-            # 图例名称带最终收益率
-            legend_name = f"{bench_name}  {final_ret:+.1f}%"
-            
-            fig_history.add_trace(go.Scatter(
-                x=bench_aligned['date'],
-                y=bench_aligned['pct_change'],
-                mode='lines',
-                name=legend_name,
-                line=dict(
-                    color=style['color'],
-                    width=style['width'],
-                    dash=style['dash']
-                ),
-                hovertemplate=f'<b>{bench_name}</b>  ' + '%{y:+.2f}%<extra></extra>'
-            ))
-        
-        # 显示加载状态（更简洁）
-        loaded = [b for b in selected_benchmarks if b in benchmark_data]
-        not_loaded = [b for b in selected_benchmarks if b not in benchmark_data]
-        status_parts = []
-        if loaded:
-            status_parts.append(f"✅ {', '.join(loaded)}")
-        if not_loaded:
-            status_parts.append(f"⚠️ 无法获取: {', '.join(not_loaded)}")
-        if status_parts:
-            st.caption("  ·  ".join(status_parts))
-        
-        # 计算 Y 轴范围（使用对齐后的数据）
-        all_pct = history_df_converted['pct_change'].tolist()
-        for bench_name, bench_aligned_df in aligned_benchmarks.items():
-            if 'pct_change' in bench_aligned_df.columns:
-                all_pct.extend(bench_aligned_df['pct_change'].tolist())
-        
-        y_min_pct = min(all_pct) if all_pct else -5
-        y_max_pct = max(all_pct) if all_pct else 5
-        y_range = y_max_pct - y_min_pct
-        y_padding = max(y_range * 0.18, 0.5)  # 至少 0.5% padding
-        
-        fig_history.update_layout(
-            title=dict(
-                text="<b>收益率对比</b>",
-                font=dict(size=20, family='Outfit', color='#0F172A'),
-                x=0, xanchor='left', y=0.95
-            ),
-            yaxis=dict(
-                ticksuffix="%",
-                range=[y_min_pct - y_padding, y_max_pct + y_padding],
-                showgrid=True,
-                gridcolor='rgba(226, 232, 240, 0.6)',
-                griddash='dot',
-                gridwidth=1,
-                zeroline=True,
-                zerolinecolor='rgba(148, 163, 184, 0.6)',
-                zerolinewidth=1.5,
-                tickfont=dict(size=11, color='#94A3B8', family='Inter'),
-                side='right',
-            )
-        )
-    else:
-        # ==================== 绝对值视图 ====================
-        y_min = history_df_converted['net_worth'].min()
-        y_max = history_df_converted['net_worth'].max()
-        y_range_padding = (y_max - y_min) * 0.15 if y_max != y_min else y_max * 0.05
-        y_axis_min = max(0, y_min - y_range_padding)
-        y_axis_max = y_max + y_range_padding
-        
-        # 渐变填充底层
-        fig_history.add_trace(go.Scatter(
-            x=history_df_converted['date'],
-            y=history_df_converted['net_worth'],
+        fig.add_trace(go.Scatter(
+            x=bench_aligned['date'],
+            y=bench_aligned['pct_change'],
             mode='lines',
-            line=dict(color='rgba(0,0,0,0)', width=0),
-            fill='tozeroy',
-            fillcolor=fill_color_top,
-            hoverinfo='skip',
-            showlegend=False
+            name=legend_name,
+            line=dict(color=style['color'], width=style['width'], dash=style['dash']),
+            hovertemplate=f'<b>{bench_name}</b>  ' + '%{y:+.2f}%<extra></extra>'
         ))
-        
-        # 主曲线
-        fig_history.add_trace(go.Scatter(
-            x=history_df_converted['date'],
-            y=history_df_converted['net_worth'],
-            mode='lines+markers',
-            name='我的组合',
-            line=dict(color=line_color, width=3.5, shape='spline', smoothing=1.3),
-            marker=dict(
-                size=7,
-                color='white',
-                line=dict(color=line_color, width=2.5),
-                symbol='circle'
-            ),
-            hovertemplate='<b>%{x|%Y-%m-%d}</b><br>' + cur_sym + '%{y:,.0f}<extra></extra>'
-        ))
-        
-        # 起止标注（更精致）
-        fig_history.add_annotation(
-            x=history_df_converted['date'].iloc[0], y=first_val,
-            text=f"{cur_sym}{first_val:,.0f}", showarrow=True,
-            arrowhead=0, arrowcolor='rgba(148,163,184,0.4)', arrowwidth=1,
-            ax=0, ay=-30,
-            font=dict(size=11, color='#94A3B8', family='Inter'),
-            bgcolor='rgba(255,255,255,0.85)', borderpad=5,
-            bordercolor='rgba(226,232,240,0.6)', borderwidth=1
-        )
-        fig_history.add_annotation(
-            x=history_df_converted['date'].iloc[-1], y=last_val,
-            text=f"<b>{cur_sym}{last_val:,.0f}</b>", showarrow=True,
-            arrowhead=0, arrowcolor=line_color, arrowwidth=1.5,
-            ax=0, ay=-35,
-            font=dict(size=13, color=line_color, family='Outfit'),
-            bgcolor='rgba(255,255,255,0.92)', borderpad=6,
-            bordercolor=line_color, borderwidth=1
-        )
-        
-        fig_history.update_layout(
-            title=dict(
-                text=f"<b>{L.CHART_NW_OVER_TIME}</b>",
-                font=dict(size=20, family='Outfit', color='#0F172A'),
-                x=0, xanchor='left', y=0.95
-            ),
-            yaxis=dict(
-                showgrid=True,
-                gridcolor='rgba(226, 232, 240, 0.6)',
-                griddash='dot',
-                gridwidth=1,
-                zeroline=False,
-                range=[y_axis_min, y_axis_max],
-                tickprefix=cur_sym,
-                tickformat=',.0f',
-                tickfont=dict(size=11, color='#94A3B8', family='Inter'),
-                side='right'
-            )
-        )
     
-    # ==================== 通用布局 ====================
-    has_benchmarks = len(selected_benchmarks) > 0
+    # 加载状态
+    loaded = [b for b in selected_benchmarks if b in benchmark_data]
+    not_loaded = [b for b in selected_benchmarks if b not in benchmark_data]
+    status_parts = []
+    if loaded:
+        status_parts.append(f"✅ {', '.join(loaded)}")
+    if not_loaded:
+        status_parts.append(f"⚠️ 无法获取: {', '.join(not_loaded)}")
+    if status_parts:
+        st.caption("  ·  ".join(status_parts))
+    
+    # Y 轴范围
+    all_pct = history_df_converted['pct_change'].tolist()
+    for bench_aligned_df in aligned_benchmarks.values():
+        if 'pct_change' in bench_aligned_df.columns:
+            all_pct.extend(bench_aligned_df['pct_change'].tolist())
+    
+    y_min_pct = min(all_pct) if all_pct else -5
+    y_max_pct = max(all_pct) if all_pct else 5
+    y_range = y_max_pct - y_min_pct
+    y_padding = max(y_range * 0.18, 0.5)
+    
+    fig.update_layout(
+        title=dict(
+            text="<b>收益率对比</b>",
+            font=dict(size=20, family='Outfit', color='#0F172A'),
+            x=0, xanchor='left', y=0.95
+        ),
+        yaxis=dict(
+            ticksuffix="%",
+            range=[y_min_pct - y_padding, y_max_pct + y_padding],
+            showgrid=True,
+            gridcolor='rgba(226, 232, 240, 0.6)',
+            griddash='dot',
+            gridwidth=1,
+            zeroline=True,
+            zerolinecolor='rgba(148, 163, 184, 0.6)',
+            zerolinewidth=1.5,
+            tickfont=dict(size=11, color='#94A3B8', family='Inter'),
+            side='right',
+        )
+    )
+
+
+def _build_abs_view(
+    fig: go.Figure,
+    history_df_converted: pd.DataFrame,
+    first_val: float,
+    last_val: float,
+    line_color: str,
+    fill_color_top: str,
+    cur_sym: str
+) -> None:
+    """
+    构建绝对值视图（净值历史曲线 + 起止标注）
+    
+    Args:
+        fig: Plotly Figure 对象
+        history_df_converted: 已转换的历史数据
+        first_val/last_val: 起止净值
+        line_color: 主曲线颜色
+        fill_color_top: 填充渐变色
+        cur_sym: 货币符号
+    """
+    y_min = history_df_converted['net_worth'].min()
+    y_max = history_df_converted['net_worth'].max()
+    y_range_padding = (y_max - y_min) * 0.15 if y_max != y_min else y_max * 0.05
+    y_axis_min = max(0, y_min - y_range_padding)
+    y_axis_max = y_max + y_range_padding
+    
+    # 渐变填充
+    fig.add_trace(go.Scatter(
+        x=history_df_converted['date'],
+        y=history_df_converted['net_worth'],
+        mode='lines',
+        line=dict(color='rgba(0,0,0,0)', width=0),
+        fill='tozeroy',
+        fillcolor=fill_color_top,
+        hoverinfo='skip',
+        showlegend=False
+    ))
+    
+    # 主曲线
+    fig.add_trace(go.Scatter(
+        x=history_df_converted['date'],
+        y=history_df_converted['net_worth'],
+        mode='lines+markers',
+        name='我的组合',
+        line=dict(color=line_color, width=3.5, shape='spline', smoothing=1.3),
+        marker=dict(size=7, color='white', line=dict(color=line_color, width=2.5), symbol='circle'),
+        hovertemplate='<b>%{x|%Y-%m-%d}</b><br>' + cur_sym + '%{y:,.0f}<extra></extra>'
+    ))
+    
+    # 起止标注
+    fig.add_annotation(
+        x=history_df_converted['date'].iloc[0], y=first_val,
+        text=f"{cur_sym}{first_val:,.0f}", showarrow=True,
+        arrowhead=0, arrowcolor='rgba(148,163,184,0.4)', arrowwidth=1,
+        ax=0, ay=-30,
+        font=dict(size=11, color='#94A3B8', family='Inter'),
+        bgcolor='rgba(255,255,255,0.85)', borderpad=5,
+        bordercolor='rgba(226,232,240,0.6)', borderwidth=1
+    )
+    fig.add_annotation(
+        x=history_df_converted['date'].iloc[-1], y=last_val,
+        text=f"<b>{cur_sym}{last_val:,.0f}</b>", showarrow=True,
+        arrowhead=0, arrowcolor=line_color, arrowwidth=1.5,
+        ax=0, ay=-35,
+        font=dict(size=13, color=line_color, family='Outfit'),
+        bgcolor='rgba(255,255,255,0.92)', borderpad=6,
+        bordercolor=line_color, borderwidth=1
+    )
+    
+    fig.update_layout(
+        title=dict(
+            text=f"<b>{L.CHART_NW_OVER_TIME}</b>",
+            font=dict(size=20, family='Outfit', color='#0F172A'),
+            x=0, xanchor='left', y=0.95
+        ),
+        yaxis=dict(
+            showgrid=True,
+            gridcolor='rgba(226, 232, 240, 0.6)',
+            griddash='dot',
+            gridwidth=1,
+            zeroline=False,
+            range=[y_axis_min, y_axis_max],
+            tickprefix=cur_sym,
+            tickformat=',.0f',
+            tickfont=dict(size=11, color='#94A3B8', family='Inter'),
+            side='right'
+        )
+    )
+
+
+def _apply_common_layout(
+    fig: go.Figure,
+    theme: Dict[str, str],
+    has_benchmarks: bool
+) -> None:
+    """
+    应用通用图表布局配置（坐标轴、十字准线、图例等）
+    
+    Args:
+        fig: Plotly Figure 对象
+        theme: 主题配置
+        has_benchmarks: 是否显示基准
+    """
     chart_height = 480 if has_benchmarks else 420
     
-    fig_history.update_layout(
+    fig.update_layout(
         xaxis_title=None,
         yaxis_title=None,
         height=chart_height,
@@ -475,7 +500,6 @@ def render_history_chart(
             linewidth=1,
             tickfont=dict(size=11, color='#94A3B8', family='Inter'),
             tickformat='%m/%d',
-            # 添加 spike line（十字准线）
             showspikes=True,
             spikemode='across',
             spikesnap='cursor',
@@ -511,13 +535,19 @@ def render_history_chart(
             tracegroupgap=16,
         ),
     )
+
+
+def _render_history_stats(
+    history_df_converted: pd.DataFrame,
+    cur_sym: str
+) -> None:
+    """
+    渲染历史曲线下方的统计指标卡片（ATH / ATL / Growth）
     
-    st.plotly_chart(fig_history, use_container_width=True, config={
-        'displayModeBar': False,
-        'scrollZoom': False,
-    })
-    
-    # ==================== 统计指标卡片（精美版） ====================
+    Args:
+        history_df_converted: 已转换的历史数据
+        cur_sym: 货币符号
+    """
     max_nw = history_df_converted['net_worth'].max()
     max_date = history_df_converted[history_df_converted['net_worth'] == max_nw]['date'].iloc[0]
     min_nw = history_df_converted['net_worth'].min()
@@ -527,11 +557,15 @@ def render_history_chart(
     growth_pct = 0.0
     if len(history_df_converted) >= 2:
         growth = history_df_converted['net_worth'].iloc[-1] - history_df_converted['net_worth'].iloc[0]
-        growth_pct = (growth / history_df_converted['net_worth'].iloc[0] * 100) if history_df_converted['net_worth'].iloc[0] > 0 else 0
+        first = history_df_converted['net_worth'].iloc[0]
+        growth_pct = (growth / first * 100) if first > 0 else 0
     
     growth_color = '#10B981' if growth >= 0 else '#EF4444'
     growth_icon = '↗' if growth >= 0 else '↘'
-    growth_bg = 'linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)' if growth >= 0 else 'linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)'
+    growth_bg = (
+        'background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%)' if growth >= 0
+        else 'background: linear-gradient(135deg, #FEF2F2 0%, #FEE2E2 100%)'
+    )
     growth_border = '#86EFAC' if growth >= 0 else '#FCA5A5'
     
     st.markdown(f"""
@@ -554,6 +588,89 @@ def render_history_chart(
     </div>
     """, unsafe_allow_html=True)
 
+
+# =====================================================================
+#  主入口：render_history_chart
+# =====================================================================
+
+def render_history_chart(
+    history_df: pd.DataFrame,
+    time_filter: str,
+    selected_benchmarks: List[str],
+    get_benchmark_history: Callable,
+    fx_rate: float,
+    cur_sym: str,
+    sort_order: str = "默认"
+) -> None:
+    """
+    渲染净值历史曲线图（重构版）
+    
+    Args:
+        history_df: 历史净值 DataFrame
+        time_filter: 时间筛选（"7D", "30D", "90D", "全部"）
+        selected_benchmarks: 选中的基准指数
+        get_benchmark_history: 获取基准数据的函数
+        fx_rate: 汇率
+        cur_sym: 货币符号
+        sort_order: 排序方式 ("默认", "收益↓", "收益↑")
+    """
+    theme = get_chart_theme()
+    
+    if history_df.empty:
+        st.info(L.CHART_NO_HISTORY)
+        return
+    
+    if len(history_df) == 1:
+        st.info(L.CHART_NEED_2)
+        return
+    
+    # 1. 时间筛选 + 货币转换
+    history_df_converted = _apply_time_filter(history_df, time_filter, fx_rate)
+    
+    # 检查数据一致性
+    if history_df['net_worth'].nunique() == 1:
+        st.warning("📊 所有历史日期的净值相同，可能是因为缺少历史价格数据。")
+    
+    # 2. 构建图表
+    fig = go.Figure()
+    
+    first_val = history_df_converted['net_worth'].iloc[0]
+    last_val = history_df_converted['net_worth'].iloc[-1]
+    is_up = last_val >= first_val
+    
+    line_color = '#10B981' if is_up else '#EF4444'
+    fill_color_top = 'rgba(16, 185, 129, 0.18)' if is_up else 'rgba(239, 68, 68, 0.18)'
+    
+    use_pct_view = len(selected_benchmarks) > 0
+    
+    if use_pct_view:
+        # 3a. 百分比对比视图
+        _build_pct_view(
+            fig, history_df_converted, first_val, line_color,
+            selected_benchmarks, get_benchmark_history, sort_order
+        )
+    else:
+        # 3b. 绝对值视图
+        _build_abs_view(
+            fig, history_df_converted, first_val, last_val,
+            line_color, fill_color_top, cur_sym
+        )
+    
+    # 4. 通用布局
+    _apply_common_layout(fig, theme, has_benchmarks=use_pct_view)
+    
+    st.plotly_chart(fig, use_container_width=True, config={
+        'displayModeBar': False,
+        'scrollZoom': False,
+    })
+    
+    # 5. 统计卡片
+    _render_history_stats(history_df_converted, cur_sym)
+
+
+# =====================================================================
+#  月度热力图
+# =====================================================================
 
 def render_monthly_heatmap(
     history_df: pd.DataFrame,
@@ -584,22 +701,16 @@ def render_monthly_heatmap(
     history_df_temp['month'] = history_df_temp['date'].dt.month
     
     # 计算月度收益 (Vectorized)
-    # Resample to month end, keeping the last value
     monthly_series = history_df_temp.set_index('date').resample('M')['net_worth'].last()
     
     if len(monthly_series) < 2:
         st.info("需要至少2个月的数据才能显示热力图")
         return
 
-    # Calculate changes and returns
-    # change = this_month - last_month
-    # return = (change / last_month) * 100
-    
     monthly_changes = monthly_series.diff()
     monthly_returns = monthly_series.pct_change() * 100
     
-    # Handle the first month separately (since diff/pct_change results in NaN)
-    # First month return = (End_First_Month - Start_Of_History) / Start_Of_History
+    # 首月特殊处理
     if not monthly_series.empty:
         first_val_hist = history_df_temp['net_worth'].iloc[0]
         first_val_month_end = monthly_series.iloc[0]
@@ -610,13 +721,11 @@ def render_monthly_heatmap(
         monthly_changes.iloc[0] = first_month_change
         monthly_returns.iloc[0] = first_month_return
     
-    # Prepare DataFrame for heatmap
     monthly_df = pd.DataFrame({
         'date': monthly_series.index,
         'return': monthly_returns,
         'change': monthly_changes
     })
-    # Do not dropna() anymore as we filled it
     
     if monthly_df.empty:
          st.info("数据不足以计算月度收益")
@@ -639,7 +748,7 @@ def render_monthly_heatmap(
     
     year_labels = [str(int(y)) for y in pivot.index.tolist()]
     
-    # 计算年度汇总
+    # 年度汇总
     yearly_summary = monthly_df.groupby('year').agg({
         'return': 'sum',
         'change': 'sum'
@@ -653,10 +762,10 @@ def render_monthly_heatmap(
                            if int(y) in yearly_summary['year'].values else None 
                            for y in year_labels]
     
-    # 格子内显示收益率百分比
+    # 格子内文本
     text_matrix = [[f"{v:+.1f}%" if pd.notna(v) else "" for v in row] for row in pivot.values]
     
-    # 构建 hover 文本
+    # hover 文本
     hover_matrix = []
     for i, row in enumerate(pivot.values):
         hover_row = []
@@ -750,7 +859,6 @@ def _render_monthly_stats(
     worst_change = worst_month['change'] * fx_rate
     win_rate = positive_months / total_months * 100 if total_months > 0 else 0
     
-    # 深色模式卡片样式
     worst_is_negative = worst_month['return'] < 0
     
     card1_style = "background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border: 1px solid #86EFAC;"
@@ -768,7 +876,6 @@ def _render_monthly_stats(
         label4_color, value4_color = "#92400E", "#78350F"
         worst_detail_color = "#D97706"
     
-    # 最差月份收益符号
     worst_return_str = f"{worst_month['return']:+.2f}%" if worst_is_negative else f"{worst_month['return']:.2f}%"
     
     st.markdown(f"""
