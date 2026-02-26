@@ -177,17 +177,7 @@ def show_dashboard(
     non_favorites = [b for b in all_benchmarks if b not in favorites]
     benchmark_options = favorites + non_favorites
     
-    # ---- 基准对比面板（标题行） ----
-    st.markdown("""
-    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-        <span style="font-size: 1.1rem;">📊</span>
-        <span style="font-size: 0.95rem; font-weight: 700; color: var(--falcon-black); font-family: 'Outfit', sans-serif;">对比基准</span>
-        <span class="falcon-badge blue" style="font-size: 0.65rem;">18 个可选</span>
-        <div style="flex: 1;"></div>
-        <span style="font-size: 0.73rem; color: var(--falcon-muted);">⭐ 收藏基准自动置顶</span>
-    </div>
-    """, unsafe_allow_html=True)
-    
+    # ---- 基准对比面板 ----
     # 处理全选/清空 action
     if 'bench_action' not in st.session_state:
         st.session_state.bench_action = None
@@ -200,26 +190,27 @@ def show_dashboard(
         bench_default = []
         st.session_state.bench_action = None
     
-    # 操作栏：选择器 + 快捷按钮 + 排序（水平一行）
-    select_col, btn1_col, btn2_col, sort_col = st.columns([5, 0.7, 0.7, 2])
+    # 标题行 + 操作栏（垂直居中对齐）
+    title_col, btn1_col, btn2_col, sort_col = st.columns(
+        [3.5, 0.6, 0.6, 2.2], vertical_alignment="center"
+    )
     
-    with select_col:
-        selected_benchmarks = st.multiselect(
-            "对比基准",
-            options=benchmark_options,
-            default=bench_default,
-            placeholder="🔍 搜索或选择基准...",
-            format_func=lambda x: f"⭐ {x}" if x in favorites else x,
-            label_visibility="collapsed"
-        )
+    with title_col:
+        st.markdown("""
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 1.1rem;">📊</span>
+            <span style="font-size: 0.95rem; font-weight: 700; color: var(--falcon-black); font-family: 'Outfit', sans-serif;">对比基准</span>
+            <span class="falcon-badge blue" style="font-size: 0.65rem;">18 个可选</span>
+        </div>
+        """, unsafe_allow_html=True)
     
     with btn1_col:
-        if st.button("全选", use_container_width=True, key="bench_select_all", type="secondary"):
+        if st.button("全选", use_container_width=True, key="bench_select_all", type="tertiary"):
             st.session_state.bench_action = 'all'
             st.rerun()
     
     with btn2_col:
-        if st.button("清空", use_container_width=True, key="bench_clear_all", type="secondary"):
+        if st.button("清空", use_container_width=True, key="bench_clear_all", type="tertiary"):
             st.session_state.bench_action = 'clear'
             st.rerun()
     
@@ -230,6 +221,16 @@ def show_dashboard(
             default="默认",
             label_visibility="collapsed"
         )
+    
+    # 全宽选择器
+    selected_benchmarks = st.multiselect(
+        "对比基准",
+        options=benchmark_options,
+        default=bench_default,
+        placeholder="🔍 搜索或选择基准...",
+        format_func=lambda x: f"⭐ {x}" if x in favorites else x,
+        label_visibility="collapsed"
+    )
     
     # ---- 收藏管理（折叠区），按分组分类显示 ----
     with st.expander("⭐ 管理收藏基准 — 收藏的基准会自动置顶", expanded=False):
