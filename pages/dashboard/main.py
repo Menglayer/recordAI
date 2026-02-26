@@ -200,8 +200,8 @@ def show_dashboard(
         bench_default = []
         st.session_state.bench_action = None
     
-    # 操作栏：选择器 + 按钮 + 排序
-    select_col, action_col = st.columns([4, 1.2])
+    # 操作栏：选择器 + 快捷按钮 + 排序（水平一行）
+    select_col, btn1_col, btn2_col, sort_col = st.columns([5, 0.7, 0.7, 2])
     
     with select_col:
         selected_benchmarks = st.multiselect(
@@ -213,23 +213,23 @@ def show_dashboard(
             label_visibility="collapsed"
         )
     
-    with action_col:
-        a1, a2, a3 = st.columns([1, 1, 1.5])
-        with a1:
-            if st.button("✅ 全选", use_container_width=True, key="bench_select_all", type="secondary"):
-                st.session_state.bench_action = 'all'
-                st.rerun()
-        with a2:
-            if st.button("🗑 清空", use_container_width=True, key="bench_clear_all", type="secondary"):
-                st.session_state.bench_action = 'clear'
-                st.rerun()
-        with a3:
-            sort_order = st.segmented_control(
-                "排序",
-                options=["默认", "收益↓", "收益↑"],
-                default="默认",
-                label_visibility="collapsed"
-            )
+    with btn1_col:
+        if st.button("全选", use_container_width=True, key="bench_select_all", type="secondary"):
+            st.session_state.bench_action = 'all'
+            st.rerun()
+    
+    with btn2_col:
+        if st.button("清空", use_container_width=True, key="bench_clear_all", type="secondary"):
+            st.session_state.bench_action = 'clear'
+            st.rerun()
+    
+    with sort_col:
+        sort_order = st.segmented_control(
+            "排序",
+            options=["默认", "收益↓", "收益↑"],
+            default="默认",
+            label_visibility="collapsed"
+        )
     
     # ---- 收藏管理（折叠区），按分组分类显示 ----
     with st.expander("⭐ 管理收藏基准 — 收藏的基准会自动置顶", expanded=False):
