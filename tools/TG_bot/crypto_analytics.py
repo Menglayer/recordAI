@@ -122,7 +122,9 @@ def calculate_analytics(closes):
     if gains:
         avg_gain = sum(gains) / len(gains)
         avg_loss = sum(losses) / len(losses)
-        if avg_loss == 0:
+        if avg_loss == 0 and avg_gain == 0:
+            rsi = 50.0  # 价格无变化，RSI 中性
+        elif avg_loss == 0:
             rsi = 100.0
         else:
             rs = avg_gain / avg_loss

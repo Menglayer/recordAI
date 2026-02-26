@@ -169,7 +169,7 @@ def main():
         
         # ===== Footer =====
         st.markdown("""
-        <div style="position: fixed; bottom: 0; padding: 12px 0; width: 100%;">
+        <div style="padding: 20px 0 8px; margin-top: 1.5rem; border-top: 1px solid #F1F5F9;">
             <div style="font-size: 0.65rem; color: #94A3B8; text-align: center;">
                 MyLedger v2.0 · Made with ❤️
             </div>

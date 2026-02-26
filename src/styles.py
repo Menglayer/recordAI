@@ -522,3 +522,34 @@ def loading_placeholder(placeholder_type="card", count=1):
         skeleton_chart()
     elif placeholder_type == "text":
         skeleton_text(count)
+
+
+# ========== Layout Helpers ==========
+
+def section_header(icon, title):
+    """
+    统一的分区标题组件（带分割线）
+    
+    Args:
+        icon: Emoji 图标
+        title: 标题文本
+    """
+    st.markdown(f"""<div style='margin: 2rem 0 1rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0; font-size: 1.1rem;'>{icon} {title}</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
+
+
+def divider():
+    """统一的水平分割线"""
+    st.markdown("""<div style='margin: 1.5rem 0; height: 1px; background: linear-gradient(90deg, transparent, #E5E7EB, transparent);'></div>""", unsafe_allow_html=True)
+
+
+def sub_label(icon, text):
+    """
+    轻量级子标题（用于卡片/表单内部分区）
+    
+    Args:
+        icon: Emoji 图标
+        text: 标签文本
+    """
+    st.markdown(f"""<div style="font-size: 0.92rem; font-weight: 700; color: var(--falcon-black); font-family: 'Outfit', sans-serif; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+        <span>{icon}</span><span>{text}</span>
+    </div>""", unsafe_allow_html=True)

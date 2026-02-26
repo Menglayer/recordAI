@@ -29,7 +29,7 @@ def show_data_view_page(engine):
         st.session_state['archived_accounts'] = []
     
     # Account Management Section
-    st.markdown("##### 📦 账户管理")
+    S.section_header("📦", "账户管理")
     
     existing_accounts = get_unique_accounts(engine)
     active_accounts = [a for a in existing_accounts if a not in st.session_state['archived_accounts']]
@@ -37,7 +37,7 @@ def show_data_view_page(engine):
     
     # Archive account
     if active_accounts:
-        st.markdown("###### 隐藏账户 (历史数据保留)")
+        st.caption("⬇️ 选择要隐藏的账户（历史数据保留）")
         hide_col1, hide_col2 = st.columns([3, 1])
         
         with hide_col1:
@@ -59,7 +59,7 @@ def show_data_view_page(engine):
     
     # Restore archived account
     if archived_accounts:
-        st.markdown("###### 已隐藏的账户")
+        st.caption("📦 已隐藏的账户")
         for acc in archived_accounts:
             restore_col1, restore_col2 = st.columns([3, 1])
             with restore_col1:
@@ -80,11 +80,11 @@ def show_data_view_page(engine):
     if not existing_accounts:
         S.empty_state("📭", "暂无账户数据", "请先在数据录入页面添加快照记录")
     
-    st.markdown("""<div style='margin: 1.5rem 0 1rem; display: flex; align-items: center; gap: 12px;'><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
+    S.divider()
     
     # Export section
-    st.markdown("##### 📥 数据导出")
-    export_col1, export_col2, export_col3, _ = st.columns([1, 1, 1, 1])
+    S.section_header("📥", "数据导出")
+    export_col1, export_col2, export_col3 = st.columns(3)
     
     with export_col1:
         with session_scope(engine) as session:
@@ -144,8 +144,8 @@ def show_data_view_page(engine):
                 )
     
     # 完整备份区域
-    st.markdown("---")
-    st.markdown("##### 💾 完整备份")
+    S.divider()
+    S.section_header("💾", "完整备份")
     st.caption("导出所有数据，可用于灾难恢复")
     
     backup_col1, backup_col2, _ = st.columns([1, 1, 2])
@@ -253,7 +253,7 @@ def show_data_view_page(engine):
         </div>
         """, unsafe_allow_html=True)
     
-    st.markdown("---")
+    S.divider()
     
     tab1, tab2, tab3 = st.tabs([L.VIEW_SNAPSHOTS, L.VIEW_TRANSFERS, L.VIEW_PRICES])
     

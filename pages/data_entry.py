@@ -31,10 +31,10 @@ def show_data_entry_page(engine):
     with tab1:
         st.subheader(L.ENTRY_SNAPSHOT)
         
-        col1, col2 = st.columns([1, 2])
+        col1, col2 = st.columns([1.5, 2])
         
         with col1:
-            st.markdown(f"### {L.ENTRY_SETTINGS}")
+            S.sub_label("⚙️", L.ENTRY_SETTINGS)
             
             snapshot_date = st.date_input(
                 L.ENTRY_DATE,
@@ -129,7 +129,7 @@ def show_data_entry_page(engine):
             st.info(f"{L.ENTRY_CURRENT_ACCOUNT}: **{account_name or L.ENTRY_NONE}**")
         
         with col2:
-            st.markdown(f"### {L.ENTRY_HOLDINGS}")
+            S.sub_label("📊", L.ENTRY_HOLDINGS)
             
             if 'snapshot_data' not in st.session_state:
                 st.session_state.snapshot_data = pd.DataFrame({

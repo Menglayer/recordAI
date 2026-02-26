@@ -27,7 +27,7 @@ def show_price_page(engine):
     tab1, tab2 = st.tabs([L.PRICE_AUTO, L.PRICE_MANUAL])
     
     with tab1:
-        st.subheader(L.PRICE_AUTO)
+
         
         with session_scope(engine) as session:
             snapshots = session.query(Snapshot.symbol).distinct().order_by(Snapshot.symbol).all()
@@ -84,7 +84,7 @@ def show_price_page(engine):
                             st.error(f"{L.PRICE_FETCH_FAILED}: {e}")
     
     with tab2:
-        st.subheader(L.PRICE_MANUAL)
+
         
         with st.form("manual_price_form"):
             col1, col2, col3 = st.columns(3)

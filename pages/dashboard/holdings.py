@@ -22,7 +22,7 @@ def render_holdings_table(
         fx_rate: 汇率
         cur_sym: 货币符号
     """
-    st.subheader(L.HOLDINGS_DETAIL)
+    # Section header is rendered by main.py's section divider
     
     if net_worth_data['details'].empty:
         S.empty_state("📦", L.HOLDINGS_NO_DATA, "请先在数据录入页面添加快照")
