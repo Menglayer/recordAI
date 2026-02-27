@@ -44,12 +44,7 @@ def show_dashboard(
         cur_sym: 货币符号
     """
     # Page header
-    st.markdown("""
-    <div style="margin-bottom: 1.5rem;">
-        <h2 style="margin: 0;">📊 仪表盘</h2>
-        <p style="color: #64748B; font-size: 0.85rem; margin-top: 4px;">您的资产概览与分析</p>
-    </div>
-    """, unsafe_allow_html=True)
+    S.page_header("📊", "仪表盘", "您的资产概览与分析")
     
     # ========== 数据加载 ==========
     with st.spinner("📊 正在加载数据..."):
@@ -130,7 +125,7 @@ def show_dashboard(
     )
     
     # ========== 数据可视化 ==========
-    st.markdown("""<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>📈 数据可视化</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
+    S.section_header("📈", "数据可视化")
     filter_col1, filter_col2, _ = st.columns([1, 1, 2])
     with filter_col1:
         time_filter = st.segmented_control(
@@ -148,7 +143,7 @@ def show_dashboard(
     )
     
     # ========== 历史曲线 ==========
-    st.markdown(f"""<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>📉 {L.CHART_HISTORY}</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
+    S.section_header("📉", L.CHART_HISTORY)
     
     # ---- 收藏基准管理 ----
     if 'favorite_benchmarks' not in st.session_state:
@@ -257,7 +252,7 @@ def show_dashboard(
         sort_order=sort_order
     )
     
-    st.markdown("""<div style='margin: 2rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>🗓️ 月度分析</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
+    S.section_header("🗓️", "月度分析")
     
     # ========== 月度热力图 ==========
     render_monthly_heatmap(
@@ -266,7 +261,7 @@ def show_dashboard(
         cur_sym=cur_sym
     )
     
-    st.markdown("""<div style='margin: 2rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>📊 持仓明细</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
+    S.section_header("📊", "持仓明细")
     
     # ========== 持仓明细 ==========
     render_holdings_table(
@@ -275,7 +270,7 @@ def show_dashboard(
         cur_sym=cur_sym
     )
     
-    st.markdown("""<div style='margin: 2rem 0 1.5rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0;'>📝 复盘日记</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
+    S.section_header("📝", "复盘日记")
     
     # ========== 复盘日记 ==========
     render_journal_section(engine)

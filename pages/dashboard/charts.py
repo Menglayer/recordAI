@@ -582,8 +582,8 @@ def _render_history_stats(
         </div>
         <div class="u-card" style="padding: 18px 20px; text-align: center; {growth_bg}; border: 1px solid {growth_border};">
             <div style="font-size: 0.7rem; color: {growth_color}; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">{growth_icon} {L.CHART_GROWTH}</div>
-            <div style="font-size: 1.5rem; font-weight: 800; color: {growth_color}; font-family: 'Outfit', sans-serif; margin: 6px 0 4px;">{growth_pct:+.2f}%</div>
-            <div style="font-size: 0.75rem; color: {growth_color};">{cur_sym}{growth:+,.2f}</div>
+            <div style="font-size: 1.5rem; font-weight: 800; color: {growth_color}; font-family: 'Outfit', sans-serif; margin: 6px 0 4px;">{cur_sym}{growth:+,.2f}</div>
+            <div style="font-size: 0.85rem; font-weight: 600; color: {growth_color};">{growth_pct:+.2f}%</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -685,7 +685,7 @@ def render_monthly_heatmap(
         fx_rate: 汇率
         cur_sym: 货币符号
     """
-    st.subheader("📅 月度收益热力图")
+    # Header is now handled by the parent component S.section_header(..., "月度分析")
     
     theme = get_chart_theme()
     

@@ -17,12 +17,7 @@ from src import styles as S
 def show_data_view_page(engine):
     """Data view page"""
     
-    st.markdown("""
-    <div style="margin-bottom: 1.5rem;">
-        <h2 style="margin: 0;">📋 数据查看</h2>
-        <p style="color: #64748B; font-size: 0.85rem; margin-top: 4px;">查看、管理和导出您的数据</p>
-    </div>
-    """, unsafe_allow_html=True)
+    S.page_header("📋", "数据查看", "查看、管理和导出您的数据")
     
     # Initialize archived accounts in session state
     if 'archived_accounts' not in st.session_state:

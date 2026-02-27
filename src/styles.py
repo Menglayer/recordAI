@@ -526,15 +526,40 @@ def loading_placeholder(placeholder_type="card", count=1):
 
 # ========== Layout Helpers ==========
 
-def section_header(icon, title):
+def section_header(icon, title, description=None):
     """
     统一的分区标题组件（带分割线）
     
     Args:
         icon: Emoji 图标
         title: 标题文本
+        description: 可选描述
     """
-    st.markdown(f"""<div style='margin: 2rem 0 1rem; display: flex; align-items: center; gap: 12px;'><h3 style='margin: 0; font-size: 1.1rem;'>{icon} {title}</h3><div style='flex: 1; height: 1px; background: #E5E7EB;'></div></div>""", unsafe_allow_html=True)
+    desc_html = f"<span style='color: var(--falcon-muted); font-size: 0.85rem; font-weight: 500; margin-left: 12px;'>{description}</span>" if description else ""
+    st.markdown(f"""<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: baseline; gap: 8px;'>
+        <h3 style='margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;'><span>{icon}</span> <span>{title}</span></h3>
+        {desc_html}
+        <div style='flex: 1; height: 1px; background: linear-gradient(90deg, #E5E7EB, transparent); margin-left: 10px;'></div>
+    </div>""", unsafe_allow_html=True)
+
+
+def page_header(icon, title, description):
+    """
+    统一的页面顶部标题组件
+    
+    Args:
+        icon: Emoji 图标
+        title: 页面标题
+        description: 页面简介
+    """
+    st.markdown(f"""
+    <div style="margin-bottom: 2rem; animation: page-fade-in 0.4s ease-out;">
+        <h2 style="margin: 0; display: flex; align-items: center; gap: 10px; font-size: 1.8rem;">
+            <span>{icon}</span> <span>{title}</span>
+        </h2>
+        <p style="color: #64748B; font-size: 0.9rem; margin: 6px 0 0 0; font-weight: 500;">{description}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
 
 def divider():

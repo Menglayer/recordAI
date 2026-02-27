@@ -17,12 +17,7 @@ from src import styles as S
 def show_price_page(engine):
     """Price update page"""
     
-    st.markdown("""
-    <div style="margin-bottom: 1.5rem;">
-        <h2 style="margin: 0;">💰 价格更新</h2>
-        <p style="color: #64748B; font-size: 0.85rem; margin-top: 4px;">获取最新资产价格</p>
-    </div>
-    """, unsafe_allow_html=True)
+    S.page_header("💰", "价格更新", "获取最新资产价格")
     
     tab1, tab2 = st.tabs([L.PRICE_AUTO, L.PRICE_MANUAL])
     
@@ -34,7 +29,7 @@ def show_price_page(engine):
             symbols_from_snapshots = [s[0] for s in snapshots]
         
         if not symbols_from_snapshots:
-            st.warning(L.PRICE_NO_SNAPSHOTS)
+            S.empty_state("⚠️", "未找到资产快照", L.PRICE_NO_SNAPSHOTS)
         else:
             st.info(L.PRICE_FOUND_N.format(len(symbols_from_snapshots), ', '.join(symbols_from_snapshots)))
             
