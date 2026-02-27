@@ -62,7 +62,7 @@ def apply_custom_design():
         }}
 
         h1, h2, h3 {{
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Outfit', "HarmonyOS Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
             color: var(--falcon-black) !important;
             letter-spacing: -0.03em !important;
             font-weight: 700 !important;
@@ -540,8 +540,8 @@ def section_header(icon, title, description=None):
     """
     desc_html = f"<span style='color: var(--falcon-muted); font-size: 0.85rem; font-weight: 500; margin-left: 12px;'>{description}</span>" if description else ""
     html_content = (
-        f'<div style="margin: 2.5rem 0 1.5rem; padding-top: 10px; display: flex; align-items: baseline; gap: 8px;">'
-        f'<h3 style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px; white-space: nowrap; flex-shrink: 0;"><span>{icon}</span> <span>{title}</span></h3>'
+        f'<div style="margin: 2.5rem 0 1.5rem; display: flex; align-items: baseline; gap: 8px;">'
+        f'<h3 style="margin: 0; padding: 4px 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px; white-space: nowrap; flex-shrink: 0; line-height: 1.5;"><span>{icon}</span> <span style="padding-top: 2px;">{title}</span></h3>'
         f'{desc_html}'
         f'<div style="flex: 1; height: 1px; background: linear-gradient(90deg, #E5E7EB, transparent); margin-left: 10px;"></div>'
         f'</div>'
@@ -559,9 +559,9 @@ def page_header(icon, title, description):
         description: 页面简介
     """
     st.markdown(
-        f'<div style="margin-bottom: 2rem; padding-top: 12px; animation: page-fade-in 0.4s ease-out;">'
-        f'<h2 style="margin: 0; display: flex; align-items: center; gap: 10px; font-size: 1.8rem;">'
-        f'<span>{icon}</span> <span>{title}</span>'
+        f'<div style="margin-bottom: 2rem; animation: page-fade-in 0.4s ease-out;">'
+        f'<h2 style="margin: 0; padding: 4px 0; display: flex; align-items: center; gap: 10px; font-size: 1.8rem; line-height: 1.5;">'
+        f'<span>{icon}</span> <span style="padding-top: 4px;">{title}</span>'
         f'</h2>'
         f'<p style="color: #64748B; font-size: 0.9rem; margin: 6px 0 0 0; font-weight: 500;">{description}</p>'
         f'</div>', 
@@ -583,8 +583,8 @@ def sub_label(icon, text):
         text: 标签文本
     """
     st.markdown(
-        f'<div style="font-size: 0.92rem; font-weight: 700; color: var(--falcon-black); font-family: \'Outfit\', sans-serif; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">'
-        f'<span>{icon}</span><span>{text}</span>'
+        f'<div style="font-size: 0.92rem; font-weight: 700; color: var(--falcon-black); font-family: \'Outfit\', \'HarmonyOS Sans SC\', \'PingFang SC\', sans-serif; margin-bottom: 12px; padding: 2px 0; display: flex; align-items: center; gap: 8px; line-height: 1.5;">'
+        f'<span>{icon}</span><span style="padding-top: 2px;">{text}</span>'
         f'</div>', 
         unsafe_allow_html=True
     )
