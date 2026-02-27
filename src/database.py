@@ -15,8 +15,8 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.exc import SQLAlchemyError
 
 from src.models import Snapshot, Transfer, PriceHistory, Journal
-from src.config import SESSION_FACTORY_CACHE_SIZE
 
+SESSION_FACTORY_CACHE_SIZE = 4  # hardcode to avoid circular import from config
 
 @lru_cache(maxsize=SESSION_FACTORY_CACHE_SIZE)
 def _get_session_factory(engine: Engine) -> sessionmaker:

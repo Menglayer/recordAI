@@ -536,11 +536,11 @@ def section_header(icon, title, description=None):
         description: 可选描述
     """
     desc_html = f"<span style='color: var(--falcon-muted); font-size: 0.85rem; font-weight: 500; margin-left: 12px;'>{description}</span>" if description else ""
-    st.markdown(f"""<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: baseline; gap: 8px;'>
-        <h3 style='margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;'><span>{icon}</span> <span>{title}</span></h3>
-        {desc_html}
-        <div style='flex: 1; height: 1px; background: linear-gradient(90deg, #E5E7EB, transparent); margin-left: 10px;'></div>
-    </div>""", unsafe_allow_html=True)
+    st.markdown(f"<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: baseline; gap: 8px;'>"
+                f"<h3 style='margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;'><span>{icon}</span> <span>{title}</span></h3>"
+                f"{desc_html}"
+                f"<div style='flex: 1; height: 1px; background: linear-gradient(90deg, #E5E7EB, transparent); margin-left: 10px;'></div>"
+                f"</div>", unsafe_allow_html=True)
 
 
 def page_header(icon, title, description):
