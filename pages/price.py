@@ -58,7 +58,6 @@ def show_price_page(engine):
                         try:
                             count = price_service.update_price_history_db(symbols_to_fetch, engine=engine)
                             clear_data_cache()
-                            st.success(L.PRICE_UPDATED_N.format(count))
                             S.toast(f"✅ {L.PRICE_UPDATED_N.format(count)}", "success")
                             
                             with session_scope(engine) as session:
@@ -81,7 +80,7 @@ def show_price_page(engine):
     with tab2:
 
         
-        with st.form("manual_price_form"):
+        with st.form("manual_price_form", clear_on_submit=True):
             col1, col2, col3 = st.columns(3)
             
             with col1:
@@ -136,8 +135,7 @@ def show_price_page(engine):
                                 session.add(new_price)
                         
                         clear_data_cache()
-                        st.success(L.PRICE_SAVED.format(symbol, price_usd))
-                        
+                        S.toast(f"✅ {L.PRICE_SAVED.format(symbol, price_usd)}", "success")
                     except Exception as e:
                         st.error(f"{L.PRICE_SAVE_FAILED}: {e}")
 

@@ -157,7 +157,8 @@ def show_data_entry_page(engine):
             valid_rows = edited_data[
                 (edited_data['Symbol'].astype(str).str.strip() != '') & 
                 (edited_data['Quantity'] > 0)
-            ]
+            ].copy()
+            valid_rows['Symbol'] = valid_rows['Symbol'].astype(str).str.strip().str.upper()
             st.caption(f"{L.ENTRY_VALID_ROWS}: {len(valid_rows)}")
         
         col_btn1, col_btn2, _ = st.columns([1, 1, 2])
@@ -182,7 +183,8 @@ def show_data_entry_page(engine):
                 valid_rows = edited_data[
                     (edited_data['Symbol'].astype(str).str.strip() != '') & 
                     (edited_data['Quantity'] > 0)
-                ]
+                ].copy()
+                valid_rows['Symbol'] = valid_rows['Symbol'].astype(str).str.strip().str.upper()
                 
                 if len(valid_rows) == 0:
                     st.warning(L.ENTRY_NO_VALID)
@@ -236,9 +238,10 @@ def show_data_entry_page(engine):
                         msg = L.ENTRY_SAVED_N.format(count)
                         if carried_count > 0:
                             msg += f" (自动继承其他账户 {carried_count} 条)"
-                        st.success(msg)
+                        
                         S.toast(f"✅ {msg}", "success")
-                        st.session_state.snapshot_data = edited_data
+                        st.session_state.snapshot_data = pd.DataFrame({'Symbol': [''], 'Quantity': [0.0]})
+                        st.rerun()
                         
                     except Exception as e:
                         st.error(f"{L.ENTRY_SAVE_FAILED}: {e}")
@@ -246,7 +249,7 @@ def show_data_entry_page(engine):
     with tab2:
         st.subheader(L.TRANSFER_TITLE)
         
-        with st.form("transfer_form"):
+        with st.form("transfer_form", clear_on_submit=True):
             col1, col2, col3, col4 = st.columns(4)
             
             with col1:
@@ -286,7 +289,6 @@ def show_data_entry_page(engine):
                     try:
                         save_transfer(engine, transfer_date, transfer_type, amount_usd, note)
                         type_str = L.TRANSFER_DEPOSIT if transfer_type == "deposit" else L.TRANSFER_WITHDRAWAL
-                        st.success(L.TRANSFER_SAVED.format(type_str, amount_usd))
                         S.toast(f"✅ {L.TRANSFER_SAVED.format(type_str, amount_usd)}", "success")
                     except Exception as e:
                         st.error(f"{L.ENTRY_SAVE_FAILED}: {e}")
@@ -294,7 +296,7 @@ def show_data_entry_page(engine):
     with tab3:
         st.subheader("📝 投资复盘")
         
-        with st.form("journal_form"):
+        with st.form("journal_form", clear_on_submit=True):
             col1, col2 = st.columns([1, 3])
             with col1:
                 j_date = st.date_input("复盘日期", value=date.today())
@@ -314,7 +316,6 @@ def show_data_entry_page(engine):
                 else:
                      try:
                          save_journal(engine, j_date, j_content, j_tags)
-                         st.success(L.JOURNAL_SAVED)
                          S.toast("✅ 日记已保存！", "success")
                      except Exception as e:
                          st.error(f"保存失败: {e}")
