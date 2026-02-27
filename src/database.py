@@ -165,7 +165,7 @@ def save_journal(
         return True
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, persist="disk")
 def get_recent_snapshots(_engine: Engine, limit: int = 10) -> pd.DataFrame:
     """
     获取最近的快照记录
@@ -184,7 +184,7 @@ def get_recent_snapshots(_engine: Engine, limit: int = 10) -> pd.DataFrame:
         return pd.DataFrame([s.to_dict() for s in snapshots])
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, persist="disk")
 def get_recent_transfers(_engine: Engine, limit: int = 10) -> pd.DataFrame:
     """
     获取最近的转账记录
@@ -203,7 +203,7 @@ def get_recent_transfers(_engine: Engine, limit: int = 10) -> pd.DataFrame:
         return pd.DataFrame([t.to_dict() for t in transfers])
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, persist="disk")
 def get_unique_accounts(_engine: Engine) -> List[str]:
     """
     获取唯一的账户名列表
@@ -219,7 +219,7 @@ def get_unique_accounts(_engine: Engine) -> List[str]:
         return [a[0] for a in accounts]
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, persist="disk")
 def get_latest_snapshot_date(_engine: Engine) -> Optional[date]:
     """
     获取最新快照日期
@@ -235,7 +235,7 @@ def get_latest_snapshot_date(_engine: Engine) -> Optional[date]:
         return result[0] if result else None
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, persist="disk")
 def get_price_for_date(_engine: Engine, symbol: str, target_date: date) -> float:
     """
     获取指定日期的资产价格
@@ -276,7 +276,7 @@ def get_price_for_date(_engine: Engine, symbol: str, target_date: date) -> float
         return price.price_usd if price else 0
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=300, persist="disk")
 def get_prices_batch(_engine: Engine, symbols: List[str], target_date: date) -> dict:
     """
     批量获取多个资产的价格（解决 N+1 查询问题）
@@ -397,7 +397,7 @@ def delete_price(engine: Engine, price_id: int) -> bool:
         return False
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, persist="disk")
 def get_journals(_engine: Engine, limit: int = 50) -> pd.DataFrame:
     """获取复盘日记列表（带缓存）"""
     with session_scope(_engine) as session:

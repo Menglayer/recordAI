@@ -14,7 +14,7 @@ from src.models import Snapshot, Transfer, PriceHistory
 from src.database import session_scope, get_prices_batch, get_latest_snapshot_date
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=600, persist="disk")
 def calculate_net_worth_for_date(_engine: Engine, target_date: date) -> pd.DataFrame:
     """
     计算指定日期的资产净值
@@ -52,7 +52,7 @@ def calculate_net_worth_for_date(_engine: Engine, target_date: date) -> pd.DataF
         return pd.DataFrame(data)
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=600, persist="disk")
 def calculate_current_net_worth(_engine: Engine) -> Dict[str, Any]:
     """
     计算当前资产净值
@@ -105,7 +105,7 @@ def calculate_current_net_worth(_engine: Engine) -> Dict[str, Any]:
     }
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=600, persist="disk")
 def calculate_transfers_summary(_engine: Engine) -> Dict[str, float]:
     """
     计算转账资金流汇总 (SQL Aggregation Optimization)
@@ -142,7 +142,7 @@ def calculate_transfers_summary(_engine: Engine) -> Dict[str, float]:
         }
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=600, persist="disk")
 def calculate_pnl(_engine: Engine) -> Dict[str, float]:
     """
     计算盈亏（PnL）
@@ -174,7 +174,7 @@ def calculate_pnl(_engine: Engine) -> Dict[str, float]:
     }
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=600, persist="disk")
 def calculate_time_based_returns(_engine: Engine) -> Dict[str, Any]:
     """
     计算基于时间的收益率和年化收益
@@ -249,7 +249,7 @@ def calculate_time_based_returns(_engine: Engine) -> Dict[str, Any]:
         }
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=600, persist="disk")
 def get_net_worth_history(_engine: Engine) -> pd.DataFrame:
     """
     获取净值历史记录 (Bulk Load Optimization)
@@ -340,7 +340,7 @@ def get_net_worth_history(_engine: Engine) -> pd.DataFrame:
     return history
 
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=3600, persist="disk")
 def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.DataFrame]:
     """
     获取基准指数价格历史（使用 yfinance）
@@ -437,7 +437,7 @@ def get_benchmark_history(start_date: date, end_date: date) -> Dict[str, pd.Data
     return result
 
 
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=600, persist="disk")
 def get_benchmark_roi(_engine: Engine) -> Optional[float]:
     """
     计算 BTC 基准收益率（从首次快照至今）

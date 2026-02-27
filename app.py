@@ -46,7 +46,7 @@ def init_connection():
 
 
 # Sidebar Stats Cache
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, persist="disk")
 def get_sidebar_stats(_engine):
     """Get sidebar stats for display"""
     net_worth = calculate_current_net_worth(_engine)

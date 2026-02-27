@@ -9,7 +9,7 @@ from src.config import (
 )
 
 
-@st.cache_data(ttl=CACHE_TTL_LONG)
+@st.cache_data(ttl=CACHE_TTL_LONG, persist="disk")
 def get_fx_rate(to_currency):
     """Get exchange rate from USD to target currency"""
     if to_currency == "USD":
@@ -69,7 +69,7 @@ def clear_data_cache():
 from src.styles import MODERN_COLORS  # noqa: F401
 
 
-@st.cache_data(ttl=CACHE_TTL_MEDIUM)
+@st.cache_data(ttl=CACHE_TTL_MEDIUM, persist="disk")
 def get_realtime_btc_price():
     """
     获取BTC价格（带缓存）
