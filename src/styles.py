@@ -536,11 +536,14 @@ def section_header(icon, title, description=None):
         description: 可选描述
     """
     desc_html = f"<span style='color: var(--falcon-muted); font-size: 0.85rem; font-weight: 500; margin-left: 12px;'>{description}</span>" if description else ""
-    st.markdown(f"<div style='margin: 2.5rem 0 1.5rem; display: flex; align-items: baseline; gap: 8px;'>"
-                f"<h3 style='margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px;'><span>{icon}</span> <span>{title}</span></h3>"
-                f"{desc_html}"
-                f"<div style='flex: 1; height: 1px; background: linear-gradient(90deg, #E5E7EB, transparent); margin-left: 10px;'></div>"
-                f"</div>", unsafe_allow_html=True)
+    html_content = f"""
+<div style="margin: 2.5rem 0 1.5rem; display: flex; align-items: baseline; gap: 8px;">
+    <h3 style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px; white-space: nowrap; flex-shrink: 0;"><span>{icon}</span> <span>{title}</span></h3>
+    {desc_html}
+    <div style="flex: 1; height: 1px; background: linear-gradient(90deg, #E5E7EB, transparent); margin-left: 10px;"></div>
+</div>
+"""
+    st.html(html_content)
 
 
 def page_header(icon, title, description):
@@ -552,19 +555,19 @@ def page_header(icon, title, description):
         title: 页面标题
         description: 页面简介
     """
-    st.markdown(f"""
-    <div style="margin-bottom: 2rem; animation: page-fade-in 0.4s ease-out;">
-        <h2 style="margin: 0; display: flex; align-items: center; gap: 10px; font-size: 1.8rem;">
-            <span>{icon}</span> <span>{title}</span>
-        </h2>
-        <p style="color: #64748B; font-size: 0.9rem; margin: 6px 0 0 0; font-weight: 500;">{description}</p>
-    </div>
-    """, unsafe_allow_html=True)
+    st.html(f"""
+<div style="margin-bottom: 2rem; animation: page-fade-in 0.4s ease-out;">
+    <h2 style="margin: 0; display: flex; align-items: center; gap: 10px; font-size: 1.8rem;">
+        <span>{icon}</span> <span>{title}</span>
+    </h2>
+    <p style="color: #64748B; font-size: 0.9rem; margin: 6px 0 0 0; font-weight: 500;">{description}</p>
+</div>
+""")
 
 
 def divider():
     """统一的水平分割线"""
-    st.markdown("""<div style='margin: 1.5rem 0; height: 1px; background: linear-gradient(90deg, transparent, #E5E7EB, transparent);'></div>""", unsafe_allow_html=True)
+    st.html("""<div style='margin: 1.5rem 0; height: 1px; background: linear-gradient(90deg, transparent, #E5E7EB, transparent);'></div>""")
 
 
 def sub_label(icon, text):
@@ -575,6 +578,8 @@ def sub_label(icon, text):
         icon: Emoji 图标
         text: 标签文本
     """
-    st.markdown(f"""<div style="font-size: 0.92rem; font-weight: 700; color: var(--falcon-black); font-family: 'Outfit', sans-serif; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
-        <span>{icon}</span><span>{text}</span>
-    </div>""", unsafe_allow_html=True)
+    st.html(f"""
+<div style="font-size: 0.92rem; font-weight: 700; color: var(--falcon-black); font-family: 'Outfit', sans-serif; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+    <span>{icon}</span><span>{text}</span>
+</div>
+""")

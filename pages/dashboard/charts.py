@@ -568,7 +568,7 @@ def _render_history_stats(
     )
     growth_border = '#86EFAC' if growth >= 0 else '#FCA5A5'
     
-    st.markdown(f"""
+    st.html(f"""
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 0.5rem 0 1rem;">
         <div class="u-card" style="padding: 18px 20px; text-align: center; background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border: 1px solid #FCD34D;">
             <div style="font-size: 0.7rem; color: #92400E; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px;">🏔️ {L.CHART_ATH}</div>
@@ -586,7 +586,7 @@ def _render_history_stats(
             <div style="font-size: 0.85rem; font-weight: 600; color: {growth_color};">{growth_pct:+.2f}%</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """)
 
 
 # =====================================================================
