@@ -55,7 +55,9 @@ def apply_custom_design():
         }}
 
         .block-container {{
-            padding-top: 1.5rem !important;
+            /* Give the top Streamlit header/toolbar enough breathing room to avoid clipping page titles */
+            padding-top: 3.25rem !important;
+            padding-top: calc(3.25rem + env(safe-area-inset-top)) !important;
             max-width: 1060px !important;
             padding-left: 1rem !important;
             padding-right: 1rem !important;
