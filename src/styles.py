@@ -66,6 +66,9 @@ def apply_custom_design():
             color: var(--falcon-black) !important;
             letter-spacing: -0.03em !important;
             font-weight: 700 !important;
+            line-height: 1.5 !important;
+            padding: 0.2em 0 !important;
+            overflow: visible !important;
         }}
 
         /* ========== Sidebar ========== */
@@ -537,7 +540,7 @@ def section_header(icon, title, description=None):
     """
     desc_html = f"<span style='color: var(--falcon-muted); font-size: 0.85rem; font-weight: 500; margin-left: 12px;'>{description}</span>" if description else ""
     html_content = (
-        f'<div style="margin: 2.5rem 0 1.5rem; display: flex; align-items: baseline; gap: 8px;">'
+        f'<div style="margin: 2.5rem 0 1.5rem; padding-top: 10px; display: flex; align-items: baseline; gap: 8px;">'
         f'<h3 style="margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 8px; white-space: nowrap; flex-shrink: 0;"><span>{icon}</span> <span>{title}</span></h3>'
         f'{desc_html}'
         f'<div style="flex: 1; height: 1px; background: linear-gradient(90deg, #E5E7EB, transparent); margin-left: 10px;"></div>'
@@ -556,7 +559,7 @@ def page_header(icon, title, description):
         description: 页面简介
     """
     st.markdown(
-        f'<div style="margin-bottom: 2rem; animation: page-fade-in 0.4s ease-out;">'
+        f'<div style="margin-bottom: 2rem; padding-top: 12px; animation: page-fade-in 0.4s ease-out;">'
         f'<h2 style="margin: 0; display: flex; align-items: center; gap: 10px; font-size: 1.8rem;">'
         f'<span>{icon}</span> <span>{title}</span>'
         f'</h2>'
