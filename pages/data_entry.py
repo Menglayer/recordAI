@@ -10,6 +10,7 @@ from src.models import Snapshot
 from src.database import (
     session_scope, save_snapshots_batch, save_transfer, get_unique_accounts, save_journal
 )
+from src.price_service import update_price_history_db
 from src.calculations import calculate_current_net_worth
 from src.utils import clear_data_cache
 from src import lang as L
@@ -234,6 +235,12 @@ def show_data_entry_page(engine):
                             if carried_count > 0:
                                 clear_data_cache()
                         
+                        # Auto-fetch BTC price for the snapshot date
+                        try:
+                            update_price_history_db(['BTC'], engine=engine, target_date=snapshot_date)
+                        except Exception as e:
+                            pass
+                            
                         # Show success message
                         msg = L.ENTRY_SAVED_N.format(count)
                         if carried_count > 0:

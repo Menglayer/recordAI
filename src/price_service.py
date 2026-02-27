@@ -261,13 +261,14 @@ class PriceService:
         return prices
 
 
-def update_price_history_db(symbols_list: List[str], engine=None):
+def update_price_history_db(symbols_list: List[str], engine=None, target_date: date = None):
     """
     获取价格并更新到数据库
     
     Args:
         symbols_list: 资产符号列表
         engine: SQLAlchemy 数据库引擎（必传）
+        target_date: 记录的日期（默认今天）
         
     Returns:
         更新/插入的记录数
@@ -280,7 +281,9 @@ def update_price_history_db(symbols_list: List[str], engine=None):
     service = PriceService()
     prices = service.fetch_prices(symbols_list)
     
-    today = date.today()
+    if target_date is None:
+        target_date = date.today()
+        
     updated_count = 0
     inserted_count = 0
     
@@ -298,10 +301,10 @@ def update_price_history_db(symbols_list: List[str], engine=None):
             else:
                 source = 'yfinance'
             
-            # 检查今天是否已有记录
+            # 检查指定日期是否已有记录
             existing = session.query(PriceHistory).filter(
                 and_(
-                    PriceHistory.date == today,
+                    PriceHistory.date == target_date,
                     PriceHistory.symbol == symbol
                 )
             ).first()
@@ -316,7 +319,7 @@ def update_price_history_db(symbols_list: List[str], engine=None):
             else:
                 # 插入新记录
                 new_price = PriceHistory(
-                    date=today,
+                    date=target_date,
                     symbol=symbol,
                     price_usd=price,
                     source=source
