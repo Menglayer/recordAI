@@ -7,7 +7,8 @@ import pandas as pd
 from src.models import Snapshot, Transfer, PriceHistory
 from src.database import (
     session_scope, get_unique_accounts,
-    get_recent_snapshots, get_recent_transfers
+    get_recent_snapshots, get_recent_transfers,
+    get_prices_batch
 )
 from src.utils import clear_data_cache
 from src import lang as L
@@ -265,17 +266,50 @@ def show_data_view_page(engine):
 def _render_snapshots_tab(engine):
     """Render snapshots tab with delete functionality"""
     st.subheader(L.VIEW_RECENT + " " + L.VIEW_SNAPSHOTS)
+    
+    # Toggle to hide small-value assets
+    hide_small = st.toggle("🔍 隐藏 $1 以下资产", value=False, key="hide_small_assets")
+    
     snapshots = get_recent_snapshots(engine, 20)
     
     if not snapshots.empty:
-        data = [{
-            L.ENTRY_DATE: row['date'],
-            L.ENTRY_ACCOUNT: row['account_name'],
-            L.ENTRY_SYMBOL: row['symbol'],
-            L.ENTRY_QUANTITY: f"{row['quantity']:,.8f}".rstrip('0').rstrip('.')
-        } for _, row in snapshots.iterrows()]
+        # If filtering is enabled, calculate USD values
+        if hide_small:
+            # Get unique symbols and the latest date for price lookup
+            symbols = list(snapshots['symbol'].unique())
+            latest_date = snapshots['date'].max()
+            prices = get_prices_batch(engine, tuple(sorted(symbols)), latest_date)
+            
+            data = []
+            hidden_count = 0
+            for _, row in snapshots.iterrows():
+                price = prices.get(row['symbol'], 0)
+                value = row['quantity'] * price
+                if value < 1:
+                    hidden_count += 1
+                    continue
+                data.append({
+                    L.ENTRY_DATE: row['date'],
+                    L.ENTRY_ACCOUNT: row['account_name'],
+                    L.ENTRY_SYMBOL: row['symbol'],
+                    L.ENTRY_QUANTITY: f"{row['quantity']:,.8f}".rstrip('0').rstrip('.'),
+                    '估值 ($)': f"${value:,.2f}"
+                })
+            
+            if hidden_count > 0:
+                st.caption(f"🔇 已隐藏 {hidden_count} 条小额资产（< $1）")
+        else:
+            data = [{
+                L.ENTRY_DATE: row['date'],
+                L.ENTRY_ACCOUNT: row['account_name'],
+                L.ENTRY_SYMBOL: row['symbol'],
+                L.ENTRY_QUANTITY: f"{row['quantity']:,.8f}".rstrip('0').rstrip('.')
+            } for _, row in snapshots.iterrows()]
         
-        st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
+        if data:
+            st.dataframe(pd.DataFrame(data), use_container_width=True, hide_index=True)
+        else:
+            st.info("所有资产均低于 $1，无可显示记录")
         
         # Delete by date
         with st.expander("🗑️ 删除快照记录", expanded=False):
@@ -301,7 +335,7 @@ def _render_snapshots_tab(engine):
                                 Snapshot.date == selected_date
                             ).delete()
                             clear_data_cache()
-                            S.toast(f"已删除 {selected_date} 的 {count} 条快照记录", "info")
+                            st.success(f"已删除 {selected_date} 的 {count} 条快照记录", icon="✅")
                             st.rerun()
     else:
         S.empty_state("📸", "暂无快照记录", "前往「数据录入」页面添加您的资产快照")
@@ -347,7 +381,7 @@ def _render_transfers_tab(engine):
                         with session_scope(engine) as session:
                             session.query(Transfer).filter(Transfer.id == transfer_id).delete()
                             clear_data_cache()
-                            S.toast("已删除转账记录", "info")
+                            st.success("已删除转账记录", icon="✅")
                             st.rerun()
     else:
         S.empty_state("💸", "暂无转账记录", "前往「数据录入」页面记录入金/出金")
@@ -393,7 +427,7 @@ def _render_prices_tab(engine):
                                 PriceHistory.date == selected_date
                             ).delete()
                             clear_data_cache()
-                            S.toast(f"已删除 {selected_date} 的 {count} 条价格记录", "info")
+                            st.success(f"已删除 {selected_date} 的 {count} 条价格记录", icon="✅")
                             st.rerun()
         else:
             S.empty_state("💰", "暂无价格记录", "前往「价格更新」页面获取资产价格")

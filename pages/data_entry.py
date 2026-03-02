@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import date
 from sqlalchemy import and_
 
-from src.models import Snapshot
+from src.models import Snapshot, PriceHistory
 from src.database import (
     session_scope, save_snapshots_batch, save_transfer, get_unique_accounts, save_journal
 )
@@ -17,6 +17,18 @@ from src import lang as L
 from src import styles as S
 
 
+def _btc_price_exists(engine, target_date):
+    """Check if BTC price already exists in DB for the given date"""
+    with session_scope(engine) as session:
+        existing = session.query(PriceHistory).filter(
+            and_(
+                PriceHistory.symbol == 'BTC',
+                PriceHistory.date == target_date
+            )
+        ).first()
+        return existing is not None
+
+
 def show_data_entry_page(engine):
     """Data entry page"""
     
@@ -25,6 +37,14 @@ def show_data_entry_page(engine):
     tab1, tab2, tab3 = st.tabs([L.ENTRY_SNAPSHOT, L.TRANSFER_TITLE, L.JOURNAL_TITLE])
     
     with tab1:
+        # Display success/error message from previous save (survives st.rerun)
+        if '_entry_msg' in st.session_state:
+            msg_data = st.session_state.pop('_entry_msg')
+            if msg_data['type'] == 'success':
+                st.success(msg_data['text'], icon="✅")
+            elif msg_data['type'] == 'error':
+                st.error(msg_data['text'], icon="❌")
+        
         st.subheader(L.ENTRY_SNAPSHOT)
         
         col1, col2 = st.columns([1.5, 2])
@@ -191,63 +211,66 @@ def show_data_entry_page(engine):
                     st.warning(L.ENTRY_NO_VALID)
                 else:
                     try:
-                        # 1. Save current account's snapshot
-                        count = save_snapshots_batch(engine, snapshot_date, account_name, valid_rows)
-                        
-                        # 2. Auto carry-forward other accounts from previous date
-                        carried_count = 0
-                        with session_scope(engine) as session:
-                            # Find accounts that exist on previous dates but not on current date
-                            prev_date = session.query(Snapshot.date).filter(
-                                Snapshot.date < snapshot_date
-                            ).order_by(Snapshot.date.desc()).first()
+                        with st.spinner("正在保存快照..."):
+                            # 1. Save current account's snapshot
+                            count = save_snapshots_batch(engine, snapshot_date, account_name, valid_rows)
                             
-                            if prev_date:
-                                # Get all accounts from previous date
-                                prev_snapshots = session.query(Snapshot).filter(
-                                    Snapshot.date == prev_date[0]
-                                ).all()
+                            # 2. Auto carry-forward other accounts from previous date
+                            carried_count = 0
+                            with session_scope(engine) as session:
+                                # Find accounts that exist on previous dates but not on current date
+                                prev_date = session.query(Snapshot.date).filter(
+                                    Snapshot.date < snapshot_date
+                                ).order_by(Snapshot.date.desc()).first()
                                 
-                                for old_snap in prev_snapshots:
-                                    # Skip if it's the account we just saved
-                                    if old_snap.account_name == account_name:
-                                        continue
+                                if prev_date:
+                                    # Get all accounts from previous date
+                                    prev_snapshots = session.query(Snapshot).filter(
+                                        Snapshot.date == prev_date[0]
+                                    ).all()
                                     
-                                    # Check if already exists for new date
-                                    existing = session.query(Snapshot).filter(
-                                        and_(
-                                            Snapshot.date == snapshot_date,
-                                            Snapshot.account_name == old_snap.account_name,
-                                            Snapshot.symbol == old_snap.symbol
-                                        )
-                                    ).first()
-                                    
-                                    if not existing:
-                                        new_snap = Snapshot(
-                                            date=snapshot_date,
-                                            account_name=old_snap.account_name,
-                                            symbol=old_snap.symbol,
-                                            quantity=old_snap.quantity
-                                        )
-                                        session.add(new_snap)
-                                        carried_count += 1
+                                    for old_snap in prev_snapshots:
+                                        # Skip if it's the account we just saved
+                                        if old_snap.account_name == account_name:
+                                            continue
+                                        
+                                        # Check if already exists for new date
+                                        existing = session.query(Snapshot).filter(
+                                            and_(
+                                                Snapshot.date == snapshot_date,
+                                                Snapshot.account_name == old_snap.account_name,
+                                                Snapshot.symbol == old_snap.symbol
+                                            )
+                                        ).first()
+                                        
+                                        if not existing:
+                                            new_snap = Snapshot(
+                                                date=snapshot_date,
+                                                account_name=old_snap.account_name,
+                                                symbol=old_snap.symbol,
+                                                quantity=old_snap.quantity
+                                            )
+                                            session.add(new_snap)
+                                            carried_count += 1
+                                
+                                if carried_count > 0:
+                                    clear_data_cache()
                             
-                            if carried_count > 0:
-                                clear_data_cache()
+                            # Only fetch BTC price if not already in DB for this date
+                            if not _btc_price_exists(engine, snapshot_date):
+                                try:
+                                    update_price_history_db(['BTC'], engine=engine, target_date=snapshot_date)
+                                except Exception:
+                                    pass
                         
-                        # Auto-fetch BTC price for the snapshot date
-                        try:
-                            update_price_history_db(['BTC'], engine=engine, target_date=snapshot_date)
-                        except Exception as e:
-                            pass
-                            
-                        # Show success message
+                        # Store success message in session_state so it survives st.rerun()
                         msg = L.ENTRY_SAVED_N.format(count)
                         if carried_count > 0:
                             msg += f" (自动继承其他账户 {carried_count} 条)"
+                        st.session_state['_entry_msg'] = {'type': 'success', 'text': f"✅ {msg}"}
                         
-                        S.toast(f"✅ {msg}", "success")
                         st.session_state.snapshot_data = pd.DataFrame({'Symbol': [''], 'Quantity': [0.0]})
+                        clear_data_cache()
                         st.rerun()
                         
                     except Exception as e:
@@ -296,7 +319,8 @@ def show_data_entry_page(engine):
                     try:
                         save_transfer(engine, transfer_date, transfer_type, amount_usd, note)
                         type_str = L.TRANSFER_DEPOSIT if transfer_type == "deposit" else L.TRANSFER_WITHDRAWAL
-                        S.toast(f"✅ {L.TRANSFER_SAVED.format(type_str, amount_usd)}", "success")
+                        clear_data_cache()
+                        st.success(f"✅ {L.TRANSFER_SAVED.format(type_str, amount_usd)}", icon="✅")
                     except Exception as e:
                         st.error(f"{L.ENTRY_SAVE_FAILED}: {e}")
 
@@ -323,6 +347,7 @@ def show_data_entry_page(engine):
                 else:
                      try:
                          save_journal(engine, j_date, j_content, j_tags)
-                         S.toast("✅ 日记已保存！", "success")
+                         clear_data_cache()
+                         st.success("✅ 日记已保存！", icon="✅")
                      except Exception as e:
                          st.error(f"保存失败: {e}")

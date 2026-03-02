@@ -29,9 +29,12 @@ def render_holdings_table(
         return
     
     details = net_worth_data['details'].copy()
-    total_value = details['value'].sum()
+    # 使用完整的总净值作为占比分母（而非仅当前显示行的 sum）
+    total_value = net_worth_data.get('total_net_worth', details['value'].sum())
+    if total_value <= 0:
+        total_value = details['value'].sum()
     
-    # 添加占比列
+    # 计算占比（数值型，用于 ProgressColumn）
     details['pct'] = (details['value'] / total_value * 100) if total_value > 0 else 0
     
     # 按价值降序排列
@@ -43,7 +46,6 @@ def render_holdings_table(
         qty_str = f"{row['quantity']:,.8f}".rstrip('0').rstrip('.')
         price_str = f"{cur_sym}{row['price'] * fx_rate:,.2f}"
         value_str = f"{cur_sym}{row['value'] * fx_rate:,.2f}"
-        pct_val = row['pct']
         
         display_data.append({
             L.HOLDINGS_ACCOUNT: row['account_name'],
@@ -51,7 +53,7 @@ def render_holdings_table(
             L.HOLDINGS_QTY: qty_str,
             L.HOLDINGS_PRICE: price_str,
             L.HOLDINGS_VALUE: value_str,
-            '占比': f"{pct_val:.1f}%"
+            '占比': round(row['pct'], 1)   # 数值型，让 ProgressColumn 正确渲染
         })
     
     df = pd.DataFrame(display_data)
@@ -75,3 +77,4 @@ def render_holdings_table(
     small_count = len(details[details['value'] < 10])
     if small_count > 0:
         st.caption(f"💡 已隐藏 {small_count} 个小额资产（< $10）")
+
