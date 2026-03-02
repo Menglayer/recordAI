@@ -196,3 +196,112 @@ def render_summary_metrics(
             delta=L.DASH_PROFIT if roi_pct > 0 else L.DASH_LOSS if roi_pct < 0 else L.DASH_EVEN,
             delta_up=roi_pct >= 0
         )
+
+
+def render_btc_goal_progress(
+    btc_equivalent: float,
+    btc_goal: float,
+    privacy_on: bool
+) -> None:
+    """
+    渲染 BTC 币本位目标进度条
+    
+    Args:
+        btc_equivalent: 当前总资产折合 BTC 数量
+        btc_goal: BTC 目标数量
+        privacy_on: 隐私模式开关
+    """
+    progress = min(btc_equivalent / btc_goal, 1.0) if btc_goal > 0 else 0
+    progress_pct = progress * 100
+    remaining = max(0, btc_goal - btc_equivalent)
+    
+    # BTC 主题用橙色系
+    if progress >= 1:
+        status_icon = "🎉"
+        status_text = "恭喜！BTC 目标达成！"
+        gradient = "linear-gradient(90deg, #F59E0B, #F97316, #FB923C)"
+        glow_color = "rgba(249, 115, 22, 0.4)"
+    elif progress >= 0.75:
+        status_icon = "🔥"
+        status_text = f"冲刺中！还差 {remaining:.4f} BTC"
+        gradient = "linear-gradient(90deg, #F59E0B, #FBBF24, #FDE047)"
+        glow_color = "rgba(245, 158, 11, 0.4)"
+    elif progress >= 0.5:
+        status_icon = "📈"
+        status_text = f"进展顺利！还差 {remaining:.4f} BTC"
+        gradient = "linear-gradient(90deg, #F97316, #FB923C, #FDBA74)"
+        glow_color = "rgba(249, 115, 22, 0.3)"
+    else:
+        status_icon = "₿"
+        status_text = f"努力中！还差 {remaining:.4f} BTC"
+        gradient = "linear-gradient(90deg, #F59E0B, #FBBF24, #FDE047)"
+        glow_color = "rgba(245, 158, 11, 0.3)"
+    
+    if not privacy_on:
+        celebrate_css = ""
+        if progress >= 1:
+            celebrate_css = """
+                @keyframes btc-celebrate {
+                    0%, 100% { transform: scale(1); }
+                    50% { transform: scale(1.1); }
+                }
+                .btc-goal-icon { animation: btc-celebrate 2s ease-in-out infinite; }
+            """
+        
+        st.markdown(f"""
+            <div class="u-card" style="padding: 1.5rem; margin: 0 0 2rem 0; position: relative; overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="btc-goal-icon" style="font-size: 1.8rem;">{status_icon}</span>
+                        <div>
+                            <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A;">₿ 币本位目标</div>
+                            <div style="font-size: 0.8rem; color: #6B7280; margin-top: 2px;">{status_text}</div>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 2.5rem; font-weight: 800; font-family: 'Outfit', sans-serif; background: {gradient}; -webkit-background-clip: text; -webkit-text-fill-color: transparent;">{progress_pct:.1f}%</div>
+                    </div>
+                </div>
+                <div style="background: #E5E7EB; border-radius: 16px; height: 24px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); position: relative;">
+                    <div style="background: {gradient}; width: {progress_pct}%; height: 100%; border-radius: 16px; position: relative; box-shadow: 0 0 12px {glow_color}; transition: width 0.6s ease;">
+                        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%); animation: btc-shine 3s ease-in-out infinite;"></div>
+                    </div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 14px; font-size: 0.85rem;">
+                    <div style="text-align: left;">
+                        <div style="color: #64748B; font-size: 0.7rem; text-transform: uppercase;">当前</div>
+                        <div style="font-weight: 700; color: #374151; font-family: 'Outfit', sans-serif;">{btc_equivalent:.4f} BTC</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="color: #64748B; font-size: 0.7rem; text-transform: uppercase;">进度</div>
+                        <div style="font-weight: 700; color: #374151;">{progress_pct:.1f}%</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="color: #64748B; font-size: 0.7rem; text-transform: uppercase;">目标</div>
+                        <div style="font-weight: 700; color: #374151; font-family: 'Outfit', sans-serif;">{btc_goal:.2f} BTC</div>
+                    </div>
+                </div>
+            </div>
+            <style>
+                @keyframes btc-shine {{
+                    0% {{ transform: translateX(-100%); }}
+                    60% {{ transform: translateX(100%); }}
+                    100% {{ transform: translateX(100%); }}
+                }}
+                {celebrate_css}
+            </style>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+            <div class="u-card" style="padding: 1.5rem; margin: 0 0 2rem 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 2rem;">₿</span>
+                        <div style="font-size: 1.1rem; font-weight: 700; color: #0F172A;">币本位目标</div>
+                    </div>
+                    <span style="font-size: 1.5rem; font-weight: 600;">••••••</span>
+                </div>
+                <div style="background: #E5E7EB; border-radius: 16px; height: 28px;"></div>
+            </div>
+        """, unsafe_allow_html=True)
+

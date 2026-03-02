@@ -15,7 +15,7 @@ from src.calculations import calculate_current_net_worth
 from src.database import get_latest_snapshot_date
 from src.auth import check_password
 from src.utils import get_fx_rate, get_realtime_btc_price, clear_data_cache, format_val
-from src.config import DEFAULT_NET_WORTH_GOAL, SUPPORTED_CURRENCIES
+from src.config import DEFAULT_NET_WORTH_GOAL, DEFAULT_BTC_GOAL, SUPPORTED_CURRENCIES
 
 
 # Import pages
@@ -158,6 +158,16 @@ def main():
                 format="%d"
             )
             st.session_state['net_worth_goal'] = goal
+            
+            # BTC goal setting
+            btc_goal = st.number_input(
+                "₿ 币本位目标 (BTC)",
+                min_value=0.0,
+                value=float(st.session_state.get('btc_goal', DEFAULT_BTC_GOAL)),
+                step=1.0,
+                format="%.2f"
+            )
+            st.session_state['btc_goal'] = btc_goal
         
         fx_rate, cur_sym = get_fx_rate(currency)
         

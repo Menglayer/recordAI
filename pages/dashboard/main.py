@@ -10,12 +10,13 @@ import pandas as pd
 from src import lang as L
 from src import styles as S
 from src.utils import get_realtime_btc_price
-from src.config import MIN_DISPLAY_VALUE, DEFAULT_NET_WORTH_GOAL
+from src.config import MIN_DISPLAY_VALUE, DEFAULT_NET_WORTH_GOAL, DEFAULT_BTC_GOAL
 import src.calculations as calculations
 
 from pages.dashboard.metrics import (
     render_net_worth_card,
     render_goal_progress,
+    render_btc_goal_progress,
     render_summary_metrics
 )
 from pages.dashboard.time_returns import render_time_returns_section
@@ -103,6 +104,14 @@ def show_dashboard(
         goal=goal,
         fx_rate=fx_rate,
         cur_sym=cur_sym,
+        privacy_on=privacy_on
+    )
+    
+    # ========== BTC 币本位进度 ==========
+    btc_goal = st.session_state.get('btc_goal', DEFAULT_BTC_GOAL)
+    render_btc_goal_progress(
+        btc_equivalent=btc_equivalent,
+        btc_goal=btc_goal,
         privacy_on=privacy_on
     )
     

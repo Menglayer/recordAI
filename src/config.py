@@ -6,6 +6,7 @@ MyLedger - 全局配置常量
 
 # ========== 业务默认值 ==========
 DEFAULT_NET_WORTH_GOAL = 500_000       # 默认目标净值 (USD)
+DEFAULT_BTC_GOAL = 10                  # 默认 BTC 币本位目标 (个)
 DEFAULT_BTC_PRICE_FALLBACK = 100_000.0  # BTC 价格最终 fallback 值
 MIN_DISPLAY_VALUE = 10                  # 小额过滤阈值 (USD)，低于此值不显示
 
