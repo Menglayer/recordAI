@@ -5,7 +5,6 @@ sqlalchemy>=2.0.0
 
 # Price Data Sources
 yfinance>=0.2.30
-ccxt>=4.1.0
 pycoingecko>=3.1.0
 
 # Utilities

@@ -1,15 +1,22 @@
 """
 MyLedger - Price Service Module
+Uses Binance public REST API (no ccxt dependency) + yfinance + CoinGecko
 """
 import time
+import json
+import urllib.request
+import urllib.error
 from datetime import date, datetime
 from typing import Dict, List, Optional
 import yfinance as yf
-import ccxt
 from pycoingecko import CoinGeckoAPI
 from .models import get_engine, PriceHistory
 from .database import session_scope
 from sqlalchemy import and_
+
+
+# Binance public API base URL
+BINANCE_API_URL = "https://api.binance.com/api/v3/ticker/price"
 
 
 class PriceService:
@@ -36,7 +43,6 @@ class PriceService:
         """
         self.retry_count = retry_count
         self.retry_delay = retry_delay
-        self.binance = ccxt.binance()
         self.coingecko = CoinGeckoAPI()
         
     def _is_crypto(self, symbol: str) -> bool:
@@ -47,9 +53,9 @@ class PriceService:
         """判断是否为稳定币"""
         return symbol.upper() in self.STABLECOINS
     
-    def _fetch_crypto_price_ccxt(self, symbol: str) -> Optional[float]:
+    def _fetch_crypto_price_binance_api(self, symbol: str) -> Optional[float]:
         """
-        使用 CCXT 从 Binance 获取加密货币价格
+        使用 Binance 公开 REST API 获取加密货币价格（无需 ccxt）
         
         Args:
             symbol: 加密货币符号（如 BTC, ETH）
@@ -58,13 +64,23 @@ class PriceService:
             价格（USDT），失败返回 None
         """
         try:
-            trading_pair = f"{symbol.upper()}/USDT"
-            ticker = self.binance.fetch_ticker(trading_pair)
-            price = ticker['last']
-            print(f"✓ [CCXT Binance] {symbol}: ${price:,.2f}")
-            return float(price)
+            trading_pair = f"{symbol.upper()}USDT"
+            url = f"{BINANCE_API_URL}?symbol={trading_pair}"
+            
+            req = urllib.request.Request(url, headers={
+                'User-Agent': 'Mozilla/5.0'
+            })
+            
+            with urllib.request.urlopen(req, timeout=10) as response:
+                data = json.loads(response.read().decode())
+                price = float(data['price'])
+                print(f"✓ [Binance API] {symbol}: ${price:,.2f}")
+                return price
+        except urllib.error.HTTPError as e:
+            print(f"✗ [Binance API] {symbol} HTTP错误: {e.code}")
+            return None
         except Exception as e:
-            print(f"✗ [CCXT Binance] {symbol} 获取失败: {e}")
+            print(f"✗ [Binance API] {symbol} 获取失败: {e}")
             return None
     
     def _fetch_crypto_price_coingecko(self, symbol: str) -> Optional[float]:
@@ -151,10 +167,10 @@ class PriceService:
             print(f"✓ [Stablecoin] {symbol}: $1.00")
             return 1.0
         
-        # 加密货币：优先 CCXT，失败后尝试 CoinGecko
+        # 加密货币：优先 Binance API，失败后尝试 CoinGecko
         if self._is_crypto(symbol):
             for attempt in range(self.retry_count):
-                price = self._fetch_crypto_price_ccxt(symbol)
+                price = self._fetch_crypto_price_binance_api(symbol)
                 if price is not None:
                     return price
                 
@@ -162,7 +178,7 @@ class PriceService:
                     print(f"  ⟳ 重试 {attempt + 1}/{self.retry_count - 1}...")
                     time.sleep(self.retry_delay)
             
-            # CCXT 失败，尝试 CoinGecko
+            # Binance API 失败，尝试 CoinGecko
             print(f"  → 尝试备用数据源 CoinGecko...")
             price = self._fetch_crypto_price_coingecko(symbol)
             if price is not None:
@@ -297,7 +313,7 @@ def update_price_history_db(symbols_list: List[str], engine=None, target_date: d
             if symbol in service.STABLECOINS:
                 source = 'fixed'
             elif symbol in service.CRYPTO_SYMBOLS:
-                source = 'ccxt'
+                source = 'binance_api'
             else:
                 source = 'yfinance'
             
