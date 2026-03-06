@@ -62,11 +62,43 @@ def clear_data_cache():
     
     # Clear sidebar-related caches (BTC price, FX rate)
     get_realtime_btc_price.clear()
+    get_btc_price_db_only.clear()
     get_fx_rate.clear()
 
 
 # Re-export from styles for backward compatibility
 from src.styles import MODERN_COLORS  # noqa: F401
+
+
+@st.cache_data(ttl=CACHE_TTL_LONG, persist="disk")
+def get_btc_price_db_only():
+    """
+    仅从数据库获取BTC价格（极快，不调API）
+    用于非Dashboard页面的侧边栏显示
+    
+    Returns:
+        float: BTC价格（USD），数据库无数据时返回 fallback
+    """
+    try:
+        from src.models import PriceHistory, get_engine
+        from src.database import session_scope
+        from sqlalchemy import desc
+        import os
+        
+        db_url = os.getenv("DB_URL") or 'local_ledger.db'
+        engine = get_engine(db_url)
+        
+        with session_scope(engine) as session:
+            btc_record = session.query(PriceHistory).filter(
+                PriceHistory.symbol == 'BTC'
+            ).order_by(desc(PriceHistory.date)).first()
+            
+            if btc_record and btc_record.price_usd > 0:
+                return btc_record.price_usd
+    except Exception:
+        pass
+    
+    return DEFAULT_BTC_PRICE_FALLBACK
 
 
 @st.cache_data(ttl=CACHE_TTL_MEDIUM, persist="disk")
