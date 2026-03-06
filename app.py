@@ -84,10 +84,6 @@ def main():
         try:
             stats = get_sidebar_stats(engine)
             if stats['total_net_worth'] > 0:
-                # Get BTC price for conversion
-                btc_price = get_realtime_btc_price()
-                btc_eq = stats['total_net_worth'] / btc_price if btc_price > 0 else 0
-                
                 # Goal progress
                 goal = st.session_state.get('net_worth_goal', DEFAULT_NET_WORTH_GOAL)
                 progress_pct = min(stats['total_net_worth'] / goal * 100, 100) if goal > 0 else 0
@@ -97,14 +93,26 @@ def main():
                 
                 is_private = st.session_state.get('_privacy_toggle', False)
                 nw_display = "••••••" if is_private else f"{cur_sym_preview}{stats['total_net_worth'] * fx_rate_preview:,.0f}"
-                btc_display = "•••• BTC" if is_private else f"≈ {btc_eq:,.4f} BTC"
+                
+                # BTC equivalent - only fetch on dashboard to avoid slow API calls on other pages
+                btc_line_html = ""
+                # Use session_state to track which nav is selected (radio hasn't been rendered yet,
+                # so we check the previous selection stored in session_state)
+                current_nav = st.session_state.get('_nav_radio', f"📊 {L.NAV_DASHBOARD}")
+                is_dashboard = L.NAV_DASHBOARD in current_nav
+                
+                if is_dashboard:
+                    btc_price = get_realtime_btc_price()
+                    btc_eq = stats['total_net_worth'] / btc_price if btc_price > 0 else 0
+                    btc_display = "•••• BTC" if is_private else f"≈ {btc_eq:,.4f} BTC"
+                    btc_line_html = f'<div style="font-size: 0.8rem; color: #D97706; font-weight: 600;">🪙 {btc_display}</div>'
                 
                 st.markdown(f"""
                 <div style="background: linear-gradient(135deg, #F0FDF4 0%, #ECFDF5 50%, #F0F9FF 100%); padding: 20px; border-radius: 16px; margin-bottom: 20px; border: 1px solid #D1FAE5; position: relative; overflow: hidden;">
                     <div style="position: absolute; top: -20px; right: -20px; width: 80px; height: 80px; background: rgba(16,185,129,0.08); border-radius: 50%;"></div>
                     <div style="font-size: 0.7rem; color: #6B7280; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600;">总资产净值</div>
                     <div style="font-size: 1.6rem; font-weight: 800; font-family: 'Outfit', sans-serif; color: #0F172A; margin: 6px 0 4px; letter-spacing: -0.02em;">{nw_display}</div>
-                    <div style="font-size: 0.8rem; color: #D97706; font-weight: 600;">🪙 {btc_display}</div>
+                    {btc_line_html}
                     <div style="margin-top: 12px;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
                             <span style="font-size: 0.68rem; color: #6B7280;">🎯 目标进度</span>
@@ -128,7 +136,8 @@ def main():
                 f"💰 {L.NAV_PRICES}",
                 f"📋 {L.NAV_DATA}"
             ],
-            label_visibility="collapsed"
+            label_visibility="collapsed",
+            key="_nav_radio"
         )
         # Strip emoji prefix for page routing
         page_clean = page.split(" ", 1)[1] if " " in page else page
