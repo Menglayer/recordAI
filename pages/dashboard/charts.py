@@ -699,7 +699,7 @@ def render_monthly_heatmap(
     history_df_temp['month'] = history_df_temp['date'].dt.month
     
     # 计算月度收益 (Vectorized)
-    monthly_series = history_df_temp.set_index('date').resample('M')['net_worth'].last()
+    monthly_series = history_df_temp.set_index('date').resample('ME')['net_worth'].last()
     
     if len(monthly_series) < 2:
         st.info("需要至少2个月的数据才能显示热力图")
@@ -734,13 +734,16 @@ def render_monthly_heatmap(
     
     months = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月']
     
+    # 去重：同一 year-month 只保留最后一条（防止 pivot 出现 ValueError）
+    monthly_df = monthly_df.drop_duplicates(subset=['year', 'month'], keep='last')
+    
     # 收益率 pivot
-    pivot = monthly_df.pivot(index='year', columns='month', values='return')
+    pivot = monthly_df.pivot_table(index='year', columns='month', values='return', aggfunc='first')
     pivot = pivot.reindex(columns=range(1, 13), fill_value=None)
     pivot.columns = months
     
     # 金额变化 pivot
-    pivot_change = monthly_df.pivot(index='year', columns='month', values='change')
+    pivot_change = monthly_df.pivot_table(index='year', columns='month', values='change', aggfunc='first')
     pivot_change = pivot_change.reindex(columns=range(1, 13), fill_value=None)
     pivot_change.columns = months
     
